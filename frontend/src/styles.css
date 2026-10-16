@@ -2523,3 +2523,28 @@ body.ui-ar .project-card-footer svg, body.ui-ar .sidebar-note a svg { transform:
 .sidebar-signout:hover { background:#e4f0e9; }
 .sidebar-signout:focus-visible { outline:3px solid #79b6a4; outline-offset:3px; }
 @media(max-width:760px) { .dashboard-sidebar { height:auto; overflow:visible; } .sidebar-scroll { display:contents; } .sidebar-user { display:block; } .sidebar-user .avatar { display:none; } .sidebar-signout { width:auto; } }
+
+.whole-rewrite>h2 { font-size:clamp(1.4rem,2vw,2rem); line-height:1.7; margin:12px 0; scroll-margin-top:24px; }
+.whole-rewrite>.muted { line-height:1.9; }
+.rewrite-integrity { padding:18px 22px; background:#fff8eb; border:1px solid #ead9b2; border-radius:12px; color:#735b29; margin:22px 0; line-height:1.9; font-size:.86rem; }
+.rewrite-integrity p { margin:8px 0 0; }
+.rewrite-settings { border:0; padding:0; min-width:0; }
+.rewrite-settings .assessment-settings { grid-template-columns:1fr 1fr; }
+.rewrite-settings .field { margin-bottom:18px; }
+.rewrite-settings textarea { min-height:105px; }
+.rewrite-note { display:block; margin:12px 0 20px; color:var(--text-muted); line-height:1.85; }
+.rewrite-plan { border-top:1px solid var(--border); margin-top:28px; padding-top:26px; }
+.rewrite-plan h3 { font-size:1.25rem; line-height:1.8; }
+.rewrite-plan p,.rewrite-plan li,.rewrite-section li { line-height:1.95; white-space:pre-wrap; }
+.rewrite-plan details { margin:20px 0; }
+.rewrite-plan summary { cursor:pointer; font-weight:600; }
+.rewrite-outline { display:flex; flex-wrap:wrap; gap:9px; margin:28px 0; }
+.rewrite-outline .btn { white-space:normal; text-align:start; font-size:.8rem; }
+.rewrite-outline .btn[aria-pressed="true"] { background:#e4f3eb; border-color:#75ab94; color:#175b43; }
+.rewrite-comparison { display:grid; grid-template-columns:1fr 1fr; gap:22px; margin:22px 0; }
+.rewrite-comparison>div { min-width:0; }
+.rewrite-comparison h4 { color:#436957; margin:0 0 15px; }
+.rewrite-comparison details { margin:12px 0; }
+.rewrite-text { white-space:pre-wrap; line-height:2; padding:22px; background:#f4f9f5; border:1px solid #d9e7dd; border-radius:12px; overflow-wrap:anywhere; }
+@media(max-width:1000px) { .rewrite-comparison { grid-template-columns:1fr; } }
+@media(max-width:760px) { .rewrite-settings .assessment-settings { grid-template-columns:1fr; } }

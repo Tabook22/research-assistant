@@ -125,6 +125,16 @@ Supported providers: OpenAI (native Responses API), Anthropic/Claude (native Mes
 
 Existing deployment settings remain the fallback until an administrator saves each task profile. Deployment keys are usable only with their original provider. A blank key retains a previously saved key for that same task/provider; selecting a different provider requires its own key. Keys are encrypted in the database using a Fernet key derived from `SECRET_KEY`, never returned by the API, and never put in browser storage. Keep `SECRET_KEY` stable and back it up privately alongside the database; changing it requires re-entering saved provider keys. API permissions and account billing remain the administrator's responsibility. Embeddings use their separate existing configuration.
 
+## Whole-paper improved proposals
+
+In **Paper review**, open **Improved whole-paper proposal**, choose the research design and source basis, optionally describe revision priorities, then generate. The analysis model first plans an ordered manuscript and provisional research problem, then writes each planned section through a separate versioned request. Every original section must be mapped into the plan; newly proposed sections are clearly identified. No source text or saved working draft is overwritten.
+
+The view compares source material with proposed wording and records changes, missing author input and verification needs. It supports pause/resume, Markdown export (including partial/stale notices), and export of the immediately previous proposal. Source edits invalidate unfinished proposals. Input is limited to 110,000 characters without silent truncation; total generated section text is limited to 105,000 characters so independent reassessment remains within the criteria context budget.
+
+After generation, **Create independent copy & reassess** creates a separate private paper review with the proposed title, ordered sections, origin link, AI provenance warning and outstanding-input list. Repeated creation reopens the same copy, preserving any researcher edits. The copy opens the scientific criteria screen using the selected design; scoring is a separate researcher-triggered task, not an automatic assertion of compliance.
+
+Rewriting cannot supply missing empirical data, real findings, verified citations or ethics approvals. Prompts require explicit inline input/verification placeholders and prohibit invented evidence, references or guarantees of publication or complete scientific compliance. Generated statements still require human verification. Failed or invalid requests retain completed checkpoints and previous proposals. The feature uses the existing project ownership and paper-review permissions.
+
 ## Core workflows
 
 1. Register / sign in  

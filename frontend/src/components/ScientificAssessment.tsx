@@ -6,7 +6,7 @@ import Icon from './Icon';
 interface Props {token:string;project:number;review:PaperReview;disabled:boolean;onUpdate:(review:PaperReview)=>void;onBusy:(busy:boolean)=>void;onNavigate:(section:number,mode:'source'|'improve'|'discuss',criterion:ScientificCriterion,location?:SourceLocation)=>void}
 export default function ScientificAssessment({token,project,review,disabled,onUpdate,onBusy,onNavigate}:Props){
  const {lang}=useI18n();const ar=lang==='ar';const c=(en:string,arabic:string)=>ar?arabic:en;
- const [catalog,setCatalog]=useState<ScientificCatalog|null>(null);const [paperType,setPaperType]=useState(review.compliance?.paper_type||'general');
+ const [catalog,setCatalog]=useState<ScientificCatalog|null>(null);const [paperType,setPaperType]=useState(review.compliance?.paper_type||review.suggested_paper_type||'general');
  const [basis,setBasis]=useState<'original'|'working'>(review.compliance?.basis||'working');
  const [running,setRunning]=useState(false);const [paused,setPaused]=useState(false);const [error,setError]=useState('');const [filter,setFilter]=useState('all');
  const [targets,setTargets]=useState<Record<string,number>>({});const [pdfUrl,setPdfUrl]=useState('');const [opening,setOpening]=useState(false);

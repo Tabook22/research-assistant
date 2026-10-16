@@ -26,3 +26,6 @@ class AnalyzeRequest(BaseModel):
 class ComplianceStart(AnalyzeRequest):
     paper_type: Literal['general','conceptual_legal','quantitative','observational_health','qualitative','systematic_review','randomized_trial','proposal'] = 'general'
     basis: Literal['original','working'] = 'working'
+
+class RewriteStart(ComplianceStart):
+    instruction: str = Field(default="", max_length=6000)

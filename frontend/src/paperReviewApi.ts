@@ -19,7 +19,14 @@ export interface PaperReview {
  source_format?: string;
  compliance?: ScientificReport;
  previous_compliance?: ScientificReport;
+ rewrite?: WholePaperProposal;
+ previous_rewrite?: WholePaperProposal;
+ suggested_paper_type?: string;
+ proposal_needs_input?: string[];
+ origin_review_id?: number;
 }
+export interface ProposedSection {id:number;title:string;purpose:string;source_section_ids:number[];result:{text:string;changes:string[];needs_input:string[]}|null}
+export interface WholePaperProposal {title:string;approach:string;problem_formulation:string;requirements_needing_input:string[];sections:ProposedSection[];paper_type:string;basis:'original'|'working';instruction:string;complete:boolean;stale?:boolean;copy_id?:number;created_at:string;updated_at:string}
 export interface ReviewSummary { id: number; filename: string; language: string; analysis_mode: string }
 export type CriterionStatus='met'|'partial'|'missing'|'unknown'|'not_applicable';
 export interface SourceLocation {section_id:number;section_title:string;start:number;end:number;quote:string;basis:'original'|'working';page:number|null;page_start:number;page_end:number}
