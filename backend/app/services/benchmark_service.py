@@ -11,7 +11,7 @@ import json
 import logging
 from typing import Any
 
-from openai import AsyncOpenAI
+from app.services.ai_gateway import task_client
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
@@ -51,10 +51,8 @@ PROJECT_STAGE_SIGNALS: dict[str, str] = {
 }
 
 
-def _client() -> AsyncOpenAI | None:
-    if not settings.xai_api_key:
-        return None
-    return AsyncOpenAI(api_key=settings.xai_api_key, base_url=settings.xai_base_url)
+def _client():
+    return task_client("analysis")
 
 
 async def benchmark_project(
@@ -446,7 +444,7 @@ Rules:
         data = _parse_json(raw)
         if not data:
             return None
-        data["model"] = settings.ai_model
+        data["model"] = getattr(client, "model", settings.ai_model)
         return data
     except Exception as exc:  # noqa: BLE001
         logger.warning("Benchmark AI narrative failed: %s", exc)

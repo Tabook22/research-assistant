@@ -178,18 +178,18 @@ def test_first_overview_keeps_individually_completed_sections(monkeypatch):
 def test_provider_errors_are_actionable_and_do_not_expose_provider_body(monkeypatch,kind,status,prefix):
     import asyncio
     import httpx
-    from openai import APITimeoutError, APIConnectionError, APIStatusError
+    from app.services import ai_gateway
     from fastapi import HTTPException
     request=httpx.Request("POST","https://example.invalid/chat/completions")
-    if kind=="timeout":error=APITimeoutError(request=request)
-    elif kind=="connection":error=APIConnectionError(request=request)
-    else:error=APIStatusError("private provider body",response=httpx.Response(kind,request=request),body={"private":"secret"})
     class FakeClient:
-        def __init__(self,**kwargs):self.chat=self;self.completions=self
+        def __init__(self,**kwargs):pass
         async def __aenter__(self):return self
         async def __aexit__(self,*args):return False
-        async def create(self,**kwargs):raise error
-    monkeypatch.setattr(svc,"AsyncOpenAI",FakeClient)
+        async def request(self,*args,**kwargs):
+            if kind=="timeout":raise httpx.ReadTimeout("private secret",request=request)
+            if kind=="connection":raise httpx.ConnectError("private secret",request=request)
+            return httpx.Response(kind,request=request,json={"private":"secret"})
+    monkeypatch.setattr(ai_gateway.httpx,"AsyncClient",FakeClient)
     monkeypatch.setattr(svc.get_settings(),"xai_api_key","dummy-test-key")
     with pytest.raises(HTTPException) as caught:asyncio.run(svc.ai_call("test",{"source":"synthetic"},True))
     assert caught.value.status_code==status and caught.value.detail.startswith(prefix)

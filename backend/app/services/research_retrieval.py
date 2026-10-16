@@ -152,9 +152,10 @@ async def semantic_vectors(db,rows,query):
 _query_cache=OrderedDict()
 
 async def expand_query(project,query):
-    cfg=get_settings()
-    if not cfg.xai_api_key:return [],""
-    key=(project,cfg.ai_model,query)
+    from app.services.ai_configuration import load
+    profile=load("analysis")
+    if not profile.key:return [],""
+    key=(project,profile.provider,profile.model,profile.version,query)
     if key in _query_cache:return _query_cache[key],""
     from app.services.paper_review_service import ai_call
     try:

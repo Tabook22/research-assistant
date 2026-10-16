@@ -48,7 +48,7 @@ export default function DashboardPage() {
     {can('research_desk')&&<Link to="/desk" className="sidebar-link"><Icon name="search" />{copy("Research desk", "مكتب البحث")}</Link>}
     {can('paper_review')&&<Link to="/review" className="sidebar-link"><Icon name="spark" />{copy("Paper review", "تحليل ورقة بحثية")}</Link>}
     <Link to="/papers" className="sidebar-link"><Icon name="book"/>{copy('My papers & uploads','أوراقي وملفاتي')}</Link>
-    {user?.is_superuser&&<Link to="/admin" className="sidebar-link"><Icon name="shield"/>{copy('Users & permissions','المستخدمون والصلاحيات')}</Link>}
+    {user?.is_superuser&&<Link to="/admin" className="sidebar-link"><Icon name="shield"/>{copy('Administration','الإدارة')}</Link>}
     <Link to="/account" className="sidebar-link"><Icon name="grid"/>{copy('Account settings','إعدادات الحساب')}</Link>
     <a href="#research-guide" className="sidebar-link"><Icon name="book" />{copy("Research guide", "دليل البحث")}</a>
    </nav>

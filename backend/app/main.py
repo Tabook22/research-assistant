@@ -71,7 +71,9 @@ app.add_middleware(
 
 api = FastAPI()  # not used; routers mounted on main
 app.include_router(auth.router, prefix="/api")
+from app.api import admin_ai
 app.include_router(admin.router, prefix="/api")
+app.include_router(admin_ai.router, prefix="/api")
 app.include_router(paper_reviews.router, prefix="/api")
 app.include_router(research_desk.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
@@ -93,10 +95,13 @@ def health() -> dict:
     # Clear cache so XAI_API_KEY from .env is always current after edits/reload
     get_settings.cache_clear()
     cfg = get_settings()
+    from app.services.ai_configuration import load
+    profile = load("analysis")
     return {
         "status": "ok",
         "app": cfg.app_name,
         "version": __version__,
-        "ai_configured": bool(cfg.xai_api_key),
-        "ai_model": cfg.ai_model,
+        "ai_configured": bool(profile.key),
+        "ai_model": profile.model,
+        "ai_provider": profile.provider,
     }

@@ -13,7 +13,7 @@ import re
 from collections import Counter, defaultdict
 from typing import Any
 
-from openai import AsyncOpenAI
+from app.services.ai_gateway import task_client
 from sqlalchemy.orm import Session, joinedload
 
 from app.config import get_settings
@@ -26,10 +26,8 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-def _client() -> AsyncOpenAI | None:
-    if not settings.xai_api_key:
-        return None
-    return AsyncOpenAI(api_key=settings.xai_api_key, base_url=settings.xai_base_url)
+def _client():
+    return task_client("analysis")
 
 
 async def build_synthesis_dashboard(
@@ -556,7 +554,7 @@ Rules:
         raw = resp.choices[0].message.content or ""
         data = _parse_json(raw)
         if data:
-            data["model"] = settings.ai_model
+            data["model"] = getattr(client, "model", settings.ai_model)
         return data
     except Exception as exc:  # noqa: BLE001
         logger.warning("AI synthesis failed: %s", exc)

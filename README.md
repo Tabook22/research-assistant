@@ -117,6 +117,14 @@ Matched excerpts open and highlight the saved passage. Original PDF page links a
 
 Assessments save each three-criterion batch and resume after provider failure or a pause. Whole-paper scoring is limited to 110,000 extracted characters; longer manuscripts are rejected before replacing any existing report rather than silently truncated. Existing project ownership, admin access and paper-review permissions apply to all criteria endpoints.
 
+## Administrator AI providers and task profiles
+
+Open **Administration → AI providers & models** (`/admin?tab=ai`). Analysis and discussion have independent provider, model identifier, API key and output-token ceilings. Analysis includes paper review, scientific criteria, comparisons and proposed revisions; discussion includes section questions, research-desk answers and workspace conversations. Settings apply to all users and new requests immediately. Existing results are retained; in-flight requests keep the profile loaded at their start.
+
+Supported providers: OpenAI (native Responses API), Anthropic/Claude (native Messages API), Google/Gemini, xAI/Grok, DeepSeek and Mistral (compatible chat APIs). Provider endpoints are fixed. The authenticated model discovery button retrieves account-visible versions from the selected provider; it does not claim every listed model supports this workflow. Exact manual model IDs are also accepted. The connection test checks a synthetic JSON response and can incur provider charges; it sends no paper text and does not save configuration. No automatic provider fallback or model upgrade occurs.
+
+Existing deployment settings remain the fallback until an administrator saves each task profile. Deployment keys are usable only with their original provider. A blank key retains a previously saved key for that same task/provider; selecting a different provider requires its own key. Keys are encrypted in the database using a Fernet key derived from `SECRET_KEY`, never returned by the API, and never put in browser storage. Keep `SECRET_KEY` stable and back it up privately alongside the database; changing it requires re-entering saved provider keys. API permissions and account billing remain the administrator's responsibility. Embeddings use their separate existing configuration.
+
 ## Core workflows
 
 1. Register / sign in  

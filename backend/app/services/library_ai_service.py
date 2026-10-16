@@ -7,7 +7,7 @@ import logging
 import re
 from typing import Any
 
-from openai import AsyncOpenAI
+from app.services.ai_gateway import task_client
 
 from app.config import get_settings
 from app.i18n.lang import normalize_lang, stage_purpose, t
@@ -20,10 +20,8 @@ logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-def _client() -> AsyncOpenAI | None:
-    if not settings.xai_api_key:
-        return None
-    return AsyncOpenAI(api_key=settings.xai_api_key, base_url=settings.xai_base_url)
+def _client():
+    return task_client("analysis")
 
 
 async def enrich_document_analysis(
@@ -38,7 +36,7 @@ async def enrich_document_analysis(
     """
     client = _client()
     if client is None:
-        return {"ai_enriched": False, "reason": "XAI_API_KEY not configured"}
+        return {"ai_enriched": False, "reason": "Analysis AI profile not configured"}
 
     lang = normalize_lang(language or "en")
     lang_name = "Arabic" if lang == "ar" else "English"
@@ -102,7 +100,7 @@ Rules:
         if not data:
             return {"ai_enriched": False, "reason": "Could not parse AI JSON"}
         data["ai_enriched"] = True
-        data["model"] = settings.ai_model
+        data["model"] = getattr(client, "model", settings.ai_model)
         return data
     except Exception as exc:  # noqa: BLE001
         logger.warning("AI enrichment failed: %s", exc)
@@ -269,7 +267,7 @@ Write the entire draft in {lang_name}.
         if marker not in text.upper() and "PROVISIONAL" not in text.upper() and "مؤقت" not in text:
             prefix = "[مؤقت—يتطلب الموافقة]\n\n" if lang == "ar" else "[PROVISIONAL—REQUIRES APPROVAL]\n\n"
             text = prefix + text
-        return {"draft": text, "source": "ai", "ai_used": True, "model": settings.ai_model}
+        return {"draft": text, "source": "ai", "ai_used": True, "model": getattr(client, "model", settings.ai_model)}
     except Exception as exc:  # noqa: BLE001
         logger.warning("Draft generation failed: %s", exc)
         return {

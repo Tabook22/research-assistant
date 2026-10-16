@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from openai import AsyncOpenAI
+from app.services.ai_gateway import task_client
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -38,10 +38,8 @@ def load_master_prompt() -> str:
     )
 
 
-def _client() -> AsyncOpenAI | None:
-    if not settings.xai_api_key:
-        return None
-    return AsyncOpenAI(api_key=settings.xai_api_key, base_url=settings.xai_base_url)
+def _client():
+    return task_client("discussion")
 
 
 def build_context_layers(
@@ -198,7 +196,7 @@ async def generate_assistant_reply(
         )
         raw_text = response.choices[0].message.content or ""
     except Exception as exc:  # noqa: BLE001
-        logger.exception("AI request failed")
+        logger.warning("AI request failed: type=%s", type(exc).__name__)
         raw_text = (
             (
                 f"تعذّر الوصول إلى مزوّد الذكاء الاصطناعي. الخطأ: {exc.__class__.__name__}.\n\n"
