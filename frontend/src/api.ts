@@ -1,5 +1,9 @@
 const API_BASE = import.meta.env.VITE_API_BASE || "/api";
 
+export class ApiError extends Error {
+  constructor(message:string,public status:number){super(message);this.name='ApiError';}
+}
+
 function authHeaders(token: string | null): HeadersInit {
   const h: HeadersInit = { "Content-Type": "application/json" };
   if (token) h.Authorization = `Bearer ${token}`;
@@ -36,15 +40,15 @@ export async function request<T>(
       /* ignore */
     }
     // FastAPI may return detail as string or list of validation errors
-    if (typeof detail === "string") throw new Error(detail);
+    if (typeof detail === "string") throw new ApiError(detail,res.status);
     if (Array.isArray(detail)) {
-      throw new Error(
+      throw new ApiError(
         detail
           .map((d) => (typeof d === "object" && d && "msg" in d ? String((d as { msg: string }).msg) : JSON.stringify(d)))
-          .join("; ")
+          .join("; "),res.status
       );
     }
-    throw new Error(JSON.stringify(detail));
+    throw new ApiError(JSON.stringify(detail),res.status);
   }
   return res.json() as Promise<T>;
 }

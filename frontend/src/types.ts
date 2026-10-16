@@ -5,6 +5,10 @@ export interface User {
   preferred_language: string;
   is_active: boolean;
   created_at: string;
+  username: string | null;
+  is_superuser: boolean;
+  permissions: string[];
+  must_change_password: boolean;
 }
 
 export interface StageDefinition {

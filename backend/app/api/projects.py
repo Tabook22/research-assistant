@@ -49,7 +49,11 @@ def list_projects(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> list[ProjectSummaryOut]:
-    projects = project_service.list_projects(db, user.id)
+    if user.is_superuser:
+        from app.models.project import ResearchProject
+        projects = db.query(ResearchProject).order_by(ResearchProject.updated_at.desc()).all()
+    else:
+        projects = project_service.list_projects(db, user.id)
     return [ProjectSummaryOut.model_validate(p) for p in projects]
 
 

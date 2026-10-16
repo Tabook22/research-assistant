@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
 from app.api import (
+    admin,
     alignment,
     paper_reviews,
     research_desk,
@@ -41,6 +42,8 @@ if settings.database_url.startswith("sqlite"):
 
 # Create tables (Alembic can replace this in production workflows)
 Base.metadata.create_all(bind=engine)
+from app.services.user_migration import migrate_user_access
+migrate_user_access(engine)
 
 @asynccontextmanager
 async def lifespan(app):
@@ -68,6 +71,7 @@ app.add_middleware(
 
 api = FastAPI()  # not used; routers mounted on main
 app.include_router(auth.router, prefix="/api")
+app.include_router(admin.router, prefix="/api")
 app.include_router(paper_reviews.router, prefix="/api")
 app.include_router(research_desk.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")

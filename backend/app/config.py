@@ -19,6 +19,7 @@ class Settings(BaseSettings):
 
     app_name: str = "ResearchGuide AI"
     app_env: str = "development"
+    allow_registration: bool = True
     debug: bool = True
     secret_key: str = "change-me-in-production-use-long-random-string"
     access_token_expire_minutes: int = 60 * 24 * 7

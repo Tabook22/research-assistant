@@ -19,6 +19,12 @@ sudo python3 /home/nasser/apps/reguide/deploy/activate-nginx.py
 
 This requires the account's sudo password. It backs up the existing domain configuration, installs a dedicated snippet, validates Nginx, and reloads it. Validation/reload failure restores the previous configuration. Existing applications and HTTPS certificates remain in place.
 
+## Accounts and page permissions
+
+Administrators manage users at `/reguide/admin`; each user can update their username and password at `/reguide/account`. The personal papers list is at `/reguide/papers`. Page grants cover research workspace, project creation, paper review, research desk, library, uploaded documents, and project export. The API enforces these grants and checks project ownership; administrators can access every user's projects and original files. Ordinary project memberships do not grant access to another user's workspace.
+
+Set `ALLOW_REGISTRATION=false` in production to require administrator-created accounts. New accounts and administrator password resets require a password change before using research tools. Credential and role changes revoke older sessions. The bootstrap operator command is `python -m app.bootstrap_admin --close-registration`, run from `backend/` using the production virtual environment with an explicitly supplied credential object through standard input. Credentials are never part of the repository. Existing installations receive an additive user-table migration at startup; back up the database before deploying.
+
 ## Operate the app
 
 ```sh

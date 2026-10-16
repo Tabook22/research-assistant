@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import {projectHome} from "../access";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import LanguageSwitcher from "../components/LanguageSwitcher";
@@ -13,7 +14,7 @@ import {
 } from "../i18n/translations";
 
 export default function NewProjectPage() {
-  const { token } = useAuth();
+  const { token, can } = useAuth();
   const { t, lang } = useI18n();
   const navigate = useNavigate();
   const [docTypes, setDocTypes] = useState<string[]>([]);
@@ -56,7 +57,7 @@ export default function NewProjectPage() {
     setError(null);
     try {
       const project = await api.createProject(token, { ...form, working_title: form.working_title.trim() });
-      navigate(`/projects/${project.id}`);
+      navigate(projectHome(project.id,can));
     } catch (err) {
       setError(err instanceof Error ? err.message : t("new.failed"));
     } finally {

@@ -2221,6 +2221,35 @@ body.ui-ar .project-card-footer svg, body.ui-ar .sidebar-note a svg { transform:
 .review-alert { margin:16px 0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; }
 .review-processing { display:flex; gap:12px; align-items:center; background:#edf5ef; color:#3c7457; border:1px solid #d8e9dd; border-radius:10px; padding:15px 20px; margin-top:18px; font-size:.86rem; }
 .review-progress-copy { flex:1; min-width:0; }
+.admin-main { width:min(1280px,94%); margin:36px auto 70px; }
+.account-main { width:min(680px,94%); margin:40px auto 70px; }
+.account-form,.admin-editor,.admin-users { padding:26px; }
+.admin-layout { display:grid; grid-template-columns:minmax(260px,340px) minmax(0,1fr); gap:24px; align-items:start; }
+.admin-detail { display:grid; gap:24px; min-width:0; }
+.admin-user-list { display:grid; gap:10px; margin-top:20px; }
+.admin-user { display:flex; align-items:center; gap:12px; padding:14px; border:1px solid #e0e9e5; border-radius:12px; background:white; text-align:start; width:100%; cursor:pointer; }
+.admin-user.active { background:#eaf5f0; border-color:#80b9a6; }
+.admin-user > span:nth-child(2) { flex:1; min-width:0; }
+.admin-user strong,.admin-user small { display:block; overflow-wrap:anywhere; }
+.admin-user small { font-size:.75rem; color:#687f76; line-height:1.7; }
+.admin-fields,.admin-grants { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+.admin-role { padding:18px; background:#f2f7f5; border-radius:12px; display:grid; gap:16px; }
+.admin-role label,.admin-grants label { display:flex; gap:10px; align-items:flex-start; cursor:pointer; }
+.admin-role small { display:block; margin-top:5px; color:#60796e; line-height:1.7; }
+.admin-role input[type=checkbox],.admin-grants input[type=checkbox] { width:18px; height:18px; flex-shrink:0; margin:3px 0 0; accent-color:#087f72; }
+.admin-permissions { border:1px solid #dce8e1; padding:18px; border-radius:12px; min-width:0; }
+.admin-permissions legend { padding:0 8px; font-weight:600; }
+.admin-grants { margin-top:18px; }
+.admin-projects { display:grid; gap:10px; }
+.admin-project,.admin-paper { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 0; border-bottom:1px solid #e5ede8; color:inherit; }
+.admin-project small,.admin-paper small { color:#597669; }
+.admin-project-create { display:flex; gap:12px; margin:18px 0 26px; }
+.admin-project-create input { flex:1; min-width:0; }
+.papers-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:20px; margin-top:24px; }
+.paper-collection-item { padding:24px; color:inherit; }
+.paper-collection-item h2 { font-size:1.1rem; overflow-wrap:anywhere; }
+@media(max-width:850px) { .admin-layout { grid-template-columns:1fr; } .admin-user-list { max-height:340px; overflow:auto; } }
+@media(max-width:520px) { .admin-fields,.admin-grants { grid-template-columns:1fr; } .admin-project-create { flex-direction:column; } .account-form,.admin-editor,.admin-users { padding:20px; } }
 .review-coverage { padding:14px 18px; background:#edf5ef; color:#38664f; border:1px solid #d8e9dd; border-radius:10px; font-size:.88rem; line-height:1.7; }
 .review-progress-copy small, .review-safe-note { display:block; margin-top:8px; line-height:1.7; }
 .review-progress-copy progress { display:block; width:100%; max-width:520px; height:8px; margin-top:12px; accent-color:#087f72; }

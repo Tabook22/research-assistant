@@ -12,7 +12,7 @@ import type { Project, StageDefinition } from "../types";
 export default function LibraryPage() {
   const { id } = useParams();
   const projectId = Number(id);
-  const { token, logout, user } = useAuth();
+  const { token, logout, user, can } = useAuth();
   const { t, lang } = useI18n();
   const [project, setProject] = useState<Project | null>(null);
   const [stages, setStages] = useState<StageDefinition[]>([]);
@@ -77,7 +77,7 @@ export default function LibraryPage() {
         </div>
         <div className="topbar-actions">
           <LanguageSwitcher />
-          <Link className="btn btn-primary" to={`/projects/${projectId}`}>
+          <Link className="btn btn-primary" to={can("workspace")?`/projects/${projectId}`:"/"}>
             {labels.backToWorkspace}
           </Link>
           <Link className="btn btn-ghost" to="/">
@@ -98,7 +98,7 @@ export default function LibraryPage() {
               {labels.pageSubtitle}
             </p>
           </div>
-          <Link className="btn" to={`/projects/${projectId}`}>
+          <Link className="btn" to={can("workspace")?`/projects/${projectId}`:"/"}>
             {labels.backToWorkspace}
           </Link>
         </div>

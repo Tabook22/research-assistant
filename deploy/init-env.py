@@ -6,7 +6,7 @@ import secrets
 
 path = Path('/home/nasser/apps/reguide/backend/.env')
 values = {
-    'APP_ENV': 'production', 'DEBUG': 'false',
+    'APP_ENV': 'production', 'DEBUG': 'false', 'ALLOW_REGISTRATION':'false',
     'SECRET_KEY': secrets.token_urlsafe(64),
     'DATABASE_URL': 'sqlite:////home/nasser/apps/reguide/data/researchguide.db',
     'UPLOAD_DIR': '/home/nasser/apps/reguide/data/uploads',

@@ -40,6 +40,7 @@ import type {
   SourceDocumentSummary,
   StageDefinition,
 } from "../types";
+import {panelPermission} from '../access';
 
 const PROFILE_FIELDS = [
   "refined_idea",
@@ -68,7 +69,7 @@ export default function WorkspacePage() {
   const { id, panel: panelParam } = useParams();
   const projectId = Number(id);
   const navigate = useNavigate();
-  const { token, logout, user } = useAuth();
+  const { token, logout, user, can } = useAuth();
   const { t, lang, isRtl } = useI18n();
   const standaloneSection: StandaloneSection | null = isStandaloneSection(panelParam)
     ? panelParam
@@ -138,7 +139,7 @@ export default function WorkspacePage() {
     const [p, st, conv] = await Promise.all([
       api.getProject(token, projectId),
       api.stages(token),
-      api.getConversation(token, projectId, lang),
+      can('workspace')?api.getConversation(token, projectId, lang):Promise.resolve({messages:[]}),
     ]);
     setProject(p);
     setStages(st);
@@ -146,7 +147,7 @@ export default function WorkspacePage() {
     setProfileDraft(p.profile || {});
     await loadSuggestions();
     await loadLibraryDocs();
-  }, [token, projectId, loadSuggestions, loadLibraryDocs, lang]);
+  }, [token, projectId, loadSuggestions, loadLibraryDocs, lang, can]);
 
   useEffect(() => {
     loadCore().catch((e) => setError(e.message));
@@ -228,7 +229,7 @@ export default function WorkspacePage() {
           api.listQuestions(token, projectId),
           api.listObjectives(token, projectId),
           api.listReferences(token, projectId),
-          api.listLibrary(token, projectId),
+          can('library')?api.listLibrary(token, projectId):Promise.resolve([]),
         ]);
         setQuestions(qs);
         setObjectives(os);
@@ -670,8 +671,8 @@ export default function WorkspacePage() {
         </div>
         <div className="topbar-actions">
           <LanguageSwitcher />
-          <Link className="btn" to={`/projects/${projectId}/desk`}>{lang === "ar" ? "مكتب البحث" : "Research desk"}</Link>
-          <Link className="btn" to={`/projects/${projectId}/review`}>{lang === "ar" ? "تحليل ورقة" : "Paper review"}</Link>
+          {can('research_desk')&&<Link className="btn" to={`/projects/${projectId}/desk`}>{lang === "ar" ? "مكتب البحث" : "Research desk"}</Link>}
+          {can('paper_review')&&<Link className="btn" to={`/projects/${projectId}/review`}>{lang === "ar" ? "تحليل ورقة" : "Paper review"}</Link>}
           {isStandalone && (
             <Link className="btn btn-primary" to={`/projects/${projectId}`}>
               {t("ws.backToWorkspace")}
@@ -877,7 +878,7 @@ export default function WorkspacePage() {
           </div>
           <div className="panel-body">
             <div className="tabs">
-              {tabs.map(([k, labelKey]) => (
+              {tabs.filter(([k])=>can(panelPermission(k))).map(([k, labelKey]) => (
                 <button
                   key={k}
                   type="button"

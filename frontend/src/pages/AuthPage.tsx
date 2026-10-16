@@ -1,4 +1,5 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useState, useEffect } from "react";
+import {request} from '../api';
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import Icon from "../components/Icon";
@@ -17,6 +18,8 @@ export default function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [allowRegistration,setAllowRegistration]=useState(false);
+  useEffect(()=>{let active=true;request<{allow_registration:boolean}>('/auth/config').then(data=>{if(active)setAllowRegistration(data.allow_registration);}).catch(()=>{});return()=>{active=false;};},[]);
   const ar = lang === "ar";
   const copy = (en: string, arabic: string) => ar ? arabic : en;
 
@@ -64,7 +67,7 @@ export default function AuthPage() {
           >
             {t("auth.signIn")}
           </button>
-          <button
+          {allowRegistration&&<button
             type="button"
             className={`tab ${mode === "register" ? "active" : ""}`}
             aria-pressed={mode === "register"}
@@ -72,7 +75,7 @@ export default function AuthPage() {
             onClick={() => { setMode("register"); setError(null); }}
           >
             {t("auth.createAccount")}
-          </button>
+          </button>}
         </div>
         <form className="stack" onSubmit={onSubmit}>
           {mode === "register" && (
@@ -94,9 +97,9 @@ export default function AuthPage() {
             </>
           )}
           <div className="field">
-            <label htmlFor="email">{t("auth.email")}</label>
+            <label htmlFor="email">{mode==='login'?copy('Username or email','اسم المستخدم أو البريد الإلكتروني'):t('auth.email')}</label>
             <input
-              id="email" type="email" autoComplete="email" placeholder="you@university.edu" disabled={busy}
+              id="email" type={mode==='login'?'text':'email'} autoComplete={mode==='login'?'username':'email'} placeholder={mode==='login'?copy('Your username or email','اسم المستخدم أو البريد الإلكتروني'):'you@university.edu'} disabled={busy}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -123,7 +126,7 @@ export default function AuthPage() {
                 : t("auth.createAccount")}
           </button>
         </form>
-        <p className="auth-fineprint">{copy("A little guidance. A lot of possibility.", "قليل من الإرشاد. آفاق واسعة من الإمكانات.")}</p>
+        <p className="auth-fineprint">{allowRegistration?copy("A little guidance. A lot of possibility.", "قليل من الإرشاد. آفاق واسعة من الإمكانات."):copy('Need access? Ask your administrator to create an account.','تحتاج إلى حساب؟ اطلب من مسؤول النظام إنشاء حساب لك.')}</p>
       </div>
       <footer>ResearchGuide AI · {copy("A thoughtful space for meaningful research", "مساحة للتفكير المتأني والبحث الهادف")}</footer>
       </section>
