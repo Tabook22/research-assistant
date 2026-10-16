@@ -2511,3 +2511,15 @@ body.ui-ar .project-card-footer svg, body.ui-ar .sidebar-note a svg { transform:
 .ai-profile>a { display:inline-block; margin-top:10px; font-size:.8rem; }
 @media(max-width:900px) { .ai-profile-grid { grid-template-columns:minmax(0,1fr); } .ai-profile { padding:22px; } .ai-admin-intro { padding:22px; } }
 @media(max-width:480px) { .ai-model-picker { flex-direction:column; } .ai-model-picker .btn { width:100%; } }
+
+/* Keep account controls in view while long navigation scrolls independently. */
+.dashboard-sidebar { height:100dvh; min-height:0; overflow:hidden; }
+.dashboard-sidebar>.brand { flex-shrink:0; }
+.sidebar-scroll { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; scrollbar-width:thin; }
+.sidebar-scroll>.sidebar-caption,.sidebar-scroll>.sidebar-nav,.sidebar-scroll>.sidebar-note { flex-shrink:0; }
+.sidebar-scroll>.sidebar-note { margin-top:24px; margin-bottom:20px; }
+.sidebar-user { flex-shrink:0; display:grid; grid-template-columns:auto minmax(0,1fr); padding-top:14px; }
+.sidebar-signout { grid-column:1/-1; width:100%; display:flex; align-items:center; justify-content:center; gap:9px; border:1px solid #d8e6df; border-radius:9px; background:#f3f8f5; color:#245a49; padding:10px 14px; font:inherit; font-size:.82rem; font-weight:600; cursor:pointer; }
+.sidebar-signout:hover { background:#e4f0e9; }
+.sidebar-signout:focus-visible { outline:3px solid #79b6a4; outline-offset:3px; }
+@media(max-width:760px) { .dashboard-sidebar { height:auto; overflow:visible; } .sidebar-scroll { display:contents; } .sidebar-user { display:block; } .sidebar-user .avatar { display:none; } .sidebar-signout { width:auto; } }

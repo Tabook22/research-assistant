@@ -41,6 +41,7 @@ export default function DashboardPage() {
   <a className="skip-link" href="#main-content">{copy("Skip to content", "انتقل إلى المحتوى")}</a>
   <aside className="dashboard-sidebar">
    <Link to="/" className="brand"><span className="brand-mark"><Icon name="book" /></span><span>ResearchGuide <small>AI</small></span></Link>
+   <div className="sidebar-scroll">
    <div className="sidebar-caption">{copy("YOUR WORKSPACE", "مساحة عملك")}</div>
    <nav className="sidebar-nav" aria-label={copy("Main navigation", "التنقل الرئيسي")}>
     <Link to="/" className="sidebar-link active" aria-current="page"><Icon name="grid" />{copy("Overview", "نظرة عامة")}</Link>
@@ -53,7 +54,8 @@ export default function DashboardPage() {
     <a href="#research-guide" className="sidebar-link"><Icon name="book" />{copy("Research guide", "دليل البحث")}</a>
    </nav>
    <div className="sidebar-note"><Icon name="spark" /><h3>{copy("Small steps. Meaningful discoveries.", "فكرة صغيرة، أثر كبير.")}</h3><p>{copy("Bring your next idea to life with a little guidance along the way.", "طوّر فكرتك خطوة بخطوة مع إرشاد علمي واضح.")}</p>{can("create_projects")&&<Link to="/projects/new">{copy("Start something new", "ابدأ رحلتك")}<Icon name="arrow" size={16} /></Link>}</div>
-   <div className="sidebar-user"><span className="avatar">{user?.full_name?.trim().charAt(0).toUpperCase() || "R"}</span><div><strong>{user?.full_name}</strong><small>{copy("Researcher workspace", "مساحة الباحث")}</small></div><button className="icon-button" onClick={logout} aria-label={t("common.signOut")} title={t("common.signOut")}><Icon name="logout" size={18} /></button></div>
+   </div>
+   <div className="sidebar-user"><span className="avatar">{user?.full_name?.trim().charAt(0).toUpperCase() || "R"}</span><div><strong>{user?.full_name}</strong><small>{copy("Researcher workspace", "مساحة الباحث")}</small></div><button className="sidebar-signout" onClick={logout}><Icon name="logout" size={18} /><span>{t("common.signOut")}</span></button></div>
   </aside>
   <div className="dashboard-content">
    <header className="dashboard-topbar"><span>{copy("Workspace", "مساحة العمل")}<span className="breadcrumb-separator">/</span><strong>{copy("Overview", "نظرة عامة")}</strong></span><LanguageSwitcher /></header>
