@@ -105,6 +105,18 @@ Review records live in the additive `paper_reviews` table, created through the e
 
 Paper analysis saves an overview first (`POST .../analyze?overview_only=true`), then saves each section through its own versioned request. The page shows progress and supports pausing after the active step. Continue analysis skips completed steps, including after a page reload or provider failure. Keep the page open while analysis runs. Refresh retains older findings while recording which section updates remain pending. Provider failures distinguish timeout, connection, quota, access, and invalid responses; diagnostics log only exception type and HTTP status. An individual provider request has a 120-second timeout.
 
+## Scientific criteria assessment
+
+In **Paper review**, choose **Scientific criteria**, select the actual research design and original text or saved working copy, then assess. Eight design profiles cover general, conceptual/legal, quantitative, observational health, qualitative, systematic review, randomized trial and proposal papers. Each criterion includes a bilingual explanation, practical improvement guidance and relevant primary guidance links.
+
+This is an application-authored reporting/reasoning rubric informed by EQUATOR, ICMJE, PRISMA 2020, STROBE, CONSORT/SPIRIT 2025, SRQR and TOP 2025. It is not their complete official checklist, a validated scientific quality scale or publication certification. Health reporting guidelines are applied only to relevant research designs.
+
+The server computes equal-weight documented fulfilment: met = 2, partial = 1, not identified = 0; justified conditional exemptions are excluded. Unchecked and unassessable criteria earn no documented points and remain explicit uncertainties. The report displays coverage and an uncertainty range without an arbitrary pass threshold. Positive judgments require excerpts matched against saved text; this validates location, not the scientific correctness of a claim. References, statistics, novelty, ethics approvals and image-only content require independent review.
+
+Matched excerpts open and highlight the saved passage. Original PDF page links appear only when the excerpt is also matched to that extracted page. Missing criteria link to a clearly identified suggested insertion section, where the researcher can discuss, request a proposal or edit manually. Draft changes invalidate working-copy findings; source text remains unchanged. Reports export as Markdown.
+
+Assessments save each three-criterion batch and resume after provider failure or a pause. Whole-paper scoring is limited to 110,000 extracted characters; longer manuscripts are rejected before replacing any existing report rather than silently truncated. Existing project ownership, admin access and paper-review permissions apply to all criteria endpoints.
+
 ## Core workflows
 
 1. Register / sign in  

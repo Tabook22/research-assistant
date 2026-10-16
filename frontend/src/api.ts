@@ -4,6 +4,12 @@ export class ApiError extends Error {
   constructor(message:string,public status:number){super(message);this.name='ApiError';}
 }
 
+export async function sourceBlob(path:string,token:string):Promise<Blob>{
+  const response=await fetch(`${API_BASE}${path}`,{headers:{Authorization:`Bearer ${token}`}});
+  if(!response.ok)throw new ApiError('Original file unavailable.',response.status);
+  return response.blob();
+}
+
 function authHeaders(token: string | null): HeadersInit {
   const h: HeadersInit = { "Content-Type": "application/json" };
   if (token) h.Authorization = `Bearer ${token}`;

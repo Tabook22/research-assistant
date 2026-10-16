@@ -22,3 +22,7 @@ class DraftUpdate(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     version: int = Field(ge=1)
+
+class ComplianceStart(AnalyzeRequest):
+    paper_type: Literal['general','conceptual_legal','quantitative','observational_health','qualitative','systematic_review','randomized_trial','proposal'] = 'general'
+    basis: Literal['original','working'] = 'working'

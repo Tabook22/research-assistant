@@ -15,7 +15,9 @@ from app.database import get_db
 from app.config import get_settings
 from app.models.user import User
 from app.models.paper_review import PaperReview
-from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate
+from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate, ComplianceStart
+from app.services import scientific_assessment as assessment
+from app.services import scientific_rubric
 from app.services.access import get_project_for_user
 from app.services import paper_review_service as svc
 
@@ -29,7 +31,10 @@ def load(db, project_id, review_id, user):
     return row
 
 def result(row):
-    return {"id":row.id,"project_id":row.project_id,"filename":row.filename,"language":row.language,"version":row.version,"updated_at":row.updated_at,**{k:v for k,v in row.state.items() if not k.startswith("_")}}
+    state={k:deepcopy(v) for k,v in row.state.items() if not k.startswith('_')}
+    if state.get('compliance'):
+        state['compliance']['stale']=assessment.stale(state,state['compliance'])
+    return {"id":row.id,"project_id":row.project_id,"filename":row.filename,"language":row.language,"version":row.version,"updated_at":row.updated_at,**state}
 
 def save(db,row,state,version):
     changed=db.execute(update(PaperReview).where(PaperReview.id==row.id,PaperReview.version==version).values(state=state,version=version+1,updated_at=datetime.now(timezone.utc)))
@@ -52,6 +57,24 @@ def section_state(row,section_id,version):
 def list_reviews(project_id:int,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
     get_project_for_user(db,project_id,user)
     return [{"id":r.id,"filename":r.filename,"language":r.language,"updated_at":r.updated_at,"analysis_mode":r.state["analysis_mode"]} for r in db.query(PaperReview).filter_by(project_id=project_id).order_by(PaperReview.updated_at.desc()).all()]
+
+@router.get('/criteria/catalog')
+def criteria_catalog(project_id:int,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
+    get_project_for_user(db,project_id,user)
+    return scientific_rubric.catalog()
+
+@router.post('/{review_id}/compliance/start')
+def start_compliance(project_id:int,review_id:int,payload:ComplianceStart,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
+    return save(db,row,assessment.start(deepcopy(row.state),payload.paper_type,payload.basis),payload.version)
+
+@router.post('/{review_id}/compliance/next')
+async def next_compliance(project_id:int,review_id:int,payload:AnalyzeRequest,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
+    state=await assessment.advance(deepcopy(row.state),row.language)
+    return save(db,row,state,payload.version)
 
 @router.post("",status_code=201)
 async def upload(project_id:int,file:UploadFile=File(...),language:str=Query("en",pattern="^(en|ar)$"),db:Session=Depends(get_db),user:User=Depends(get_current_user)):
