@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, StrictBool
 
 class Finding(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -29,3 +29,14 @@ class ComplianceStart(AnalyzeRequest):
 
 class RewriteStart(ComplianceStart):
     instruction: str = Field(default="", max_length=6000)
+
+class PaperChatRequest(Action):
+    section_id: int | None = Field(default=None, ge=1)
+    search_id: str | None = Field(default=None, max_length=40)
+    language: Literal['en','ar'] | None = None
+
+class PaperChatSearch(AnalyzeRequest):
+    proposal_id: str = Field(min_length=1, max_length=40)
+    query: str = Field(min_length=3, max_length=240)
+    consent: StrictBool
+    language: Literal['en','ar'] | None = None

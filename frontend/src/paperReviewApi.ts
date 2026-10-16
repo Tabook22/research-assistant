@@ -26,7 +26,11 @@ export interface PaperReview {
  suggested_paper_type?: string;
  proposal_needs_input?: string[];
  origin_review_id?: number;
+ paper_chat?: {messages:PaperChatMessage[];searches:PaperChatSearch[]};
 }
+export interface AcademicChatSource {id:number;title:string;authors:string;year:number|null;doi:string;url:string|null;abstract:string;providers:string[];coverage:'abstract'|'metadata'}
+export interface PaperChatSearch {id:string;query:string;proposal_id:string;consented_at:string;created_at:string;results:AcademicChatSource[];providers:{provider:string;status:string;count?:number;message?:string}[]}
+export interface PaperChatMessage {id:string;role:'user'|'assistant';content:string;created_at:string;kind?:'search_results';search_id?:string;section_id?:number|null;locations?:SourceLocation[];unmatched_evidence?:number;follow_up_questions?:string[];external_sources?:AcademicChatSource[];coverage?:{mode:string;section_id:number|null;supplied_characters:number;total_characters:number};search_proposal?:{id:string;query:string;reason:string;used:boolean}}
 export interface ProposedSection {id:number;title:string;purpose:string;source_section_ids:number[];result:{text:string;changes:string[];needs_input:string[]}|null}
 export interface WholePaperProposal {title:string;approach:string;problem_formulation:string;requirements_needing_input:string[];sections:ProposedSection[];paper_type:string;basis:'original'|'working';instruction:string;complete:boolean;stale?:boolean;copy_id?:number;created_at:string;updated_at:string}
 export interface ReviewSummary { id: number; filename: string; language: string; analysis_mode: string }

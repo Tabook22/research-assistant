@@ -2,7 +2,7 @@ export const pageGrants=[
  ['workspace','Research workspace','مساحة البحث'],
  ['create_projects','Create projects','إنشاء المشاريع'],
  ['paper_review','Full paper review & revision','تحليل الأوراق ومناقشتها وإعادة صياغتها'],
- ['paper_evaluate','Upload & evaluate papers only','رفع وتقييم الأوراق فقط'],
+ ['paper_evaluate','Upload, evaluate & discuss papers','رفع وتقييم ومناقشة الأوراق'],
  ['research_desk','Research desk','مكتب البحث'],
  ['library','Paper library','مكتبة الأوراق'],
  ['documents','Uploaded documents','المستندات المرفوعة'],

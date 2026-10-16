@@ -15,10 +15,11 @@ from app.database import get_db
 from app.config import get_settings
 from app.models.user import User
 from app.models.paper_review import PaperReview
-from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate, ComplianceStart, RewriteStart
+from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate, ComplianceStart, RewriteStart, PaperChatRequest, PaperChatSearch
 from app.services import scientific_assessment as assessment
 from app.services import paper_rewrite
 from app.services import paper_annotations
+from app.services import paper_chat
 from app.services import scientific_rubric
 from app.services.access import get_project_for_user
 from app.services import paper_review_service as svc
@@ -65,6 +66,20 @@ async def passage_annotations(project_id:int, review_id:int, section_id:int, pay
     row=load(db,project_id,review_id,user)
     state,section=section_state(row,section_id,payload.version)
     state=await paper_annotations.annotate(state,section,row.language)
+    return save(db,row,state,payload.version)
+
+@router.post('/{review_id}/chat')
+async def chat_with_paper(project_id:int, review_id:int, payload:PaperChatRequest, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
+    state=await paper_chat.discuss(deepcopy(row.state),payload.language or row.language,payload.instruction,payload.section_id,payload.search_id)
+    return save(db,row,state,payload.version)
+
+@router.post('/{review_id}/chat/search')
+async def search_for_paper_chat(project_id:int, review_id:int, payload:PaperChatSearch, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
+    state=await paper_chat.search(deepcopy(row.state),payload.proposal_id,payload.query,payload.consent,payload.language or row.language)
     return save(db,row,state,payload.version)
 
 @router.get("")

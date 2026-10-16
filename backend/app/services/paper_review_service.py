@@ -103,7 +103,7 @@ def evidence_check(finding: dict, source: str) -> dict:
 async def ai_call(system: str, payload: dict, json_output: bool = False) -> str:
     from app.services.ai_gateway import task_client
     task = payload.get("task", "")
-    purpose = "discussion" if task.startswith("Discuss this section") or task.startswith("Answer the question using retrieved evidence") else "analysis"
+    purpose = "discussion" if task.startswith(("Discuss this section", "Discuss this paper", "Answer the question using retrieved evidence")) else "analysis"
     client = task_client(purpose)
     if client is None:
         raise HTTPException(503, "AI assistance is not configured. Ask the administrator to configure AI settings.")

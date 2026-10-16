@@ -143,6 +143,14 @@ Choose the **Upload & evaluate only** permission preset for a restricted reviewe
 
 The dedicated container endpoint serializes initial creation in the deployed single API process. Multi-process deployment would require database-level uniqueness for that container, alongside the existing job-runner scaling changes.
 
+## Paper research companion
+
+Open a saved review and choose Discuss with AI. Each paper keeps its own saved conversation. The companion explains arguments and terminology, offers constructive critique, suggests defence questions and uses the administrator's discussion model. It supports a whole-paper or single-section scope and replies in the selected interface language. Validated source quotations link back to the visual reader. Long papers use bounded, question-relevant excerpts with an explicit partial-context notice; recent conversation context is limited to ten messages while the saved transcript is retained.
+
+Internet discovery is an explicit, separate action: an assistant may propose editable keywords, but sending a message (even one saying yes or search) never calls search providers. The user must approve the displayed query. The server checks a paper-specific saved proposal, a strict boolean consent and the current review version before calling OpenAlex, Crossref and Semantic Scholar. Only the approved query is passed to discovery; the manuscript is not uploaded to search providers. Results retain consent time, provider availability and abstract/metadata coverage. Comparing saved results needs another chat message and does not run another search. Full texts are not fetched or claimed to be reviewed. Failed provider calls retain the previous conversation and leave the proposal retryable.
+
+Evaluation-only users can discuss their own papers and approve these bounded academic searches; section editing, whole-paper rewriting and other workspace tools retain their existing permission checks.
+
 ## Visual paper review
 
 The paper review page opens a read-only visual studio, including for evaluation-only accounts. Saved-paper cards, a section outline and constructive passage notes connect feedback to server-verified excerpts of the extracted original. Notes distinguish strengths, improvements and verification needs. Suggested passage wording is compared with the original using a whitespace-preserving word diff; proposals never update source text or drafts.

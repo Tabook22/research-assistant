@@ -19,9 +19,9 @@ def enforce(user, path: str, method: str):
         if paper_path:
             suffix = paper_path.group('suffix') or ''
             allowed = ((method == 'GET' and (not suffix or re.fullmatch(r'/\d+(?:/file)?', suffix) or suffix == '/criteria/catalog'))
-                       or (method == 'POST' and (not suffix or re.fullmatch(r'/\d+/(?:analyze|sections/\d+/(?:analyze|annotations)|compliance/(?:start|next))', suffix))))
+                       or (method == 'POST' and (not suffix or re.fullmatch(r'/\d+/(?:analyze|chat(?:/search)?|sections/\d+/(?:analyze|annotations)|compliance/(?:start|next))', suffix))))
             if not allowed:
-                raise HTTPException(403, 'This account can upload, read, analyze and assess papers only.')
+                raise HTTPException(403, 'This account can upload, evaluate and discuss its own papers. Editing and other research tools are not enabled.')
             return
         if grants == {'paper_evaluate'} and method == 'GET' and re.fullmatch(r'/api/projects/\d+', path.rstrip('/')):
             raise HTTPException(403, 'Research workspace access is not enabled.')
