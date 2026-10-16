@@ -34,9 +34,17 @@ class PaperChatRequest(Action):
     section_id: int | None = Field(default=None, ge=1)
     search_id: str | None = Field(default=None, max_length=40)
     language: Literal['en','ar'] | None = None
+    session_id: str | None = Field(default=None, min_length=1, max_length=40)
 
 class PaperChatSearch(AnalyzeRequest):
     proposal_id: str = Field(min_length=1, max_length=40)
     query: str = Field(min_length=3, max_length=240)
     consent: StrictBool
     language: Literal['en','ar'] | None = None
+    session_id: str | None = Field(default=None, min_length=1, max_length=40)
+
+class ChatSessionCreate(AnalyzeRequest):
+    title: str = Field(default='', max_length=120)
+
+class ChatSessionRename(AnalyzeRequest):
+    title: str = Field(min_length=1, max_length=120)

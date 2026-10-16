@@ -143,6 +143,12 @@ Choose the **Upload & evaluate only** permission preset for a restricted reviewe
 
 The dedicated container endpoint serializes initial creation in the deployed single API process. Multi-process deployment would require database-level uniqueness for that container, alongside the existing job-runner scaling changes.
 
+## Saved conversation sessions
+
+Each paper's companion has a Session history panel with stable session numbers, automatic titles from the first question, optional renaming, start/last-activity dates and question/search counts. Search the titles and full saved conversation text, or filter by a local activity date. Opening a session restores its transcript and question numbering; replies and approved academic searches remain scoped to that session. New sessions do not invoke an AI provider. Unsent questions are retained in memory when switching between sessions within the open paper.
+
+Existing transcripts are projected as session 1 without changing their message IDs, timestamps, source anchors or search approvals. The normalized history is persisted on the next successful chat/session write; merely reading an old review does not change its saved version. All session writes use the review's optimistic version check and existing paper ownership permissions. Evaluation-only users can create, rename and resume their own paper sessions without obtaining document-editing permissions.
+
 ## Paper research companion
 
 Open a saved review and choose Discuss with AI. Each paper keeps its own saved conversation. The companion explains arguments and terminology, offers constructive critique, suggests defence questions and uses the administrator's discussion model. It supports a whole-paper or single-section scope and replies in the selected interface language. Validated source quotations link back to the visual reader. Long papers use bounded, question-relevant excerpts with an explicit partial-context notice; recent conversation context is limited to ten messages while the saved transcript is retained.

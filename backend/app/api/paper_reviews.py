@@ -15,7 +15,7 @@ from app.database import get_db
 from app.config import get_settings
 from app.models.user import User
 from app.models.paper_review import PaperReview
-from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate, ComplianceStart, RewriteStart, PaperChatRequest, PaperChatSearch
+from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate, ComplianceStart, RewriteStart, PaperChatRequest, PaperChatSearch, ChatSessionCreate, ChatSessionRename
 from app.services import scientific_assessment as assessment
 from app.services import paper_rewrite
 from app.services import paper_annotations
@@ -35,6 +35,8 @@ def load(db, project_id, review_id, user):
 
 def result(row):
     state={k:deepcopy(v) for k,v in row.state.items() if not k.startswith('_')}
+    if state.get('paper_chat'):
+        state['paper_chat']=paper_chat.history(state)
     if state.get('compliance'):
         state['compliance']['stale']=assessment.stale(state,state['compliance'])
     if state.get('rewrite'):
@@ -72,15 +74,27 @@ async def passage_annotations(project_id:int, review_id:int, section_id:int, pay
 async def chat_with_paper(project_id:int, review_id:int, payload:PaperChatRequest, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
     row=load(db,project_id,review_id,user)
     if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
-    state=await paper_chat.discuss(deepcopy(row.state),payload.language or row.language,payload.instruction,payload.section_id,payload.search_id)
+    state=await paper_chat.discuss(deepcopy(row.state),payload.language or row.language,payload.instruction,payload.section_id,payload.search_id,payload.session_id)
     return save(db,row,state,payload.version)
 
 @router.post('/{review_id}/chat/search')
 async def search_for_paper_chat(project_id:int, review_id:int, payload:PaperChatSearch, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
     row=load(db,project_id,review_id,user)
     if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
-    state=await paper_chat.search(deepcopy(row.state),payload.proposal_id,payload.query,payload.consent,payload.language or row.language)
+    state=await paper_chat.search(deepcopy(row.state),payload.proposal_id,payload.query,payload.consent,payload.language or row.language,payload.session_id)
     return save(db,row,state,payload.version)
+
+@router.post('/{review_id}/chat/sessions')
+def create_chat_session(project_id:int, review_id:int, payload:ChatSessionCreate, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
+    return save(db,row,paper_chat.create_session(deepcopy(row.state),payload.title),payload.version)
+
+@router.patch('/{review_id}/chat/sessions/{session_id}')
+def rename_chat_session(project_id:int, review_id:int, session_id:str, payload:ChatSessionRename, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
+    return save(db,row,paper_chat.rename_session(deepcopy(row.state),session_id,payload.title),payload.version)
 
 @router.get("")
 def list_reviews(project_id:int,db:Session=Depends(get_db),user:User=Depends(get_current_user)):

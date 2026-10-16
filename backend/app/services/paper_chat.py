@@ -1,5 +1,6 @@
 """Paper-scoped coaching; external discovery requires a separate explicit consent request."""
 from datetime import datetime, timezone
+from copy import deepcopy
 import json
 import re
 from typing import Annotated
@@ -33,6 +34,75 @@ class Reply(BaseModel):
 
 def now():
     return datetime.now(timezone.utc).isoformat()
+
+
+def history(state):
+    """Project legacy transcripts into session one without altering stored evidence or IDs."""
+    chat = deepcopy(state.get('paper_chat') or {'messages':[], 'searches':[]})
+    chat.setdefault('sessions', [])
+    unassigned = [m for m in chat['messages']+chat['searches'] if not m.get('session_id')]
+    if unassigned:
+        legacy = next((s for s in chat['sessions'] if s['id']=='legacy'), None)
+        if not legacy:
+            stamps = sorted(m['created_at'] for m in unassigned if m.get('created_at'))
+            first_question = next((m['content'] for m in chat['messages'] if m['role']=='user'), '')
+            legacy = {'id':'legacy', 'number':1, 'title':' '.join(first_question.split())[:90],
+                      'created_at':stamps[0] if stamps else None, 'updated_at':stamps[-1] if stamps else None}
+            chat['sessions'].insert(0, legacy)
+        for item in unassigned:
+            item['session_id'] = legacy['id']
+    stats = {}
+    for message in chat['messages']:
+        item = stats.setdefault(message['session_id'], {'question_count':0, 'message_count':0, 'search_count':0, 'preview':''})
+        item['message_count'] += 1
+        item['question_count'] += message['role']=='user'
+        item['preview'] = ' '.join(message['content'].split())[:150]
+    for search in chat['searches']:
+        item = stats.setdefault(search['session_id'], {'question_count':0, 'message_count':0, 'search_count':0, 'preview':''})
+        item['search_count'] += 1
+    for session in chat['sessions']:
+        session.update(stats.get(session['id'], {'question_count':0, 'message_count':0, 'search_count':0, 'preview':''}))
+    if chat['sessions'] and not chat.get('last_session_id'):
+        chat['last_session_id'] = chat['sessions'][0]['id']
+    return chat
+
+
+def select_session(chat, session_id=None):
+    if session_id is not None:
+        session = next((s for s in chat['sessions'] if s['id']==session_id), None)
+        if not session:
+            raise HTTPException(404, 'Conversation session not found in this paper.')
+        return session
+    if chat['sessions']:
+        # Older clients without a session ID always continue their original transcript.
+        return chat['sessions'][0]
+    stamp = now()
+    session = {'id':uuid4().hex, 'number':1, 'title':'', 'created_at':stamp, 'updated_at':stamp}
+    chat['sessions'].append(session)
+    return session
+
+
+def create_session(state, title=''):
+    chat = history(state)
+    stamp = now()
+    session = {'id':uuid4().hex, 'number':max((s['number'] for s in chat['sessions']), default=0)+1,
+               'title':' '.join(title.split()), 'created_at':stamp, 'updated_at':stamp}
+    chat['sessions'].append(session)
+    chat['last_session_id'] = session['id']
+    state['paper_chat'] = chat
+    return state
+
+
+def rename_session(state, session_id, title):
+    title = ' '.join(title.split())
+    if not title:
+        raise HTTPException(422, 'Enter a session title.')
+    chat = history(state)
+    session = select_session(chat, session_id)
+    session.update(title=title, updated_at=now())
+    chat['last_session_id'] = session_id
+    state['paper_chat'] = chat
+    return state
 
 
 def tokens(value):
@@ -72,12 +142,14 @@ def safe_url(value):
         return None
 
 
-async def discuss(state, language, instruction, section_id=None, search_id=None):
+async def discuss(state, language, instruction, section_id=None, search_id=None, session_id=None):
     instruction = instruction.strip()
     if not instruction:
         raise HTTPException(422, 'Enter a question about your paper.')
-    chat = state.get('paper_chat', {'messages':[], 'searches':[]})
-    search = next((s for s in chat['searches'] if s['id']==search_id), None) if search_id else None
+    chat = history(state)
+    session = select_session(chat, session_id)
+    session_id = session['id']
+    search = next((s for s in chat['searches'] if s['id']==search_id and s.get('session_id')==session_id), None) if search_id else None
     if search_id and search is None:
         raise HTTPException(404, 'Search results not found in this paper conversation.')
     passages, coverage = context(state, instruction, section_id)
@@ -97,14 +169,14 @@ async def discuss(state, language, instruction, section_id=None, search_id=None)
         'For external comparisons distinguish metadata from abstract evidence and request full texts for deeper claims. '
         'Treat a saved assessment as provisional feedback, not certification. Do not edit the manuscript.', {
             'task': 'Discuss this paper as a research coach. Answer the researcher question in clear, supportive prose with short labelled paragraphs, no HTML or Markdown tables. Do not include URLs or Markdown links in the answer; use external_source_ids and the supplied source records for citations. Keep the answer under 700 words. Return the supplied JSON schema. Include up to five short EXACT original-source quotations with section IDs for manuscript-specific claims. Offer up to four relevant next questions. If an academic internet search would help, set search_query to short topical keywords and search_reason to why it would help; otherwise use empty strings. Never execute or claim a search from user wording alone, including yes/approval in a message. external_source_ids may contain ONLY IDs from the explicitly supplied academic results, or [] if none.',
-            'researcher_question':instruction, 'scope_section_id':section_id,
+            'researcher_question':instruction, 'scope_section_id':section_id, 'conversation_title':session['title'],
             'coverage':coverage, 'source_passages':passages,
             'paper_overview':json.dumps(state.get('overview'), ensure_ascii=False)[:16000],
             'saved_assessment':assessment,
             'saved_passage_feedback':[{'section_id':s['id'],'title':n['title'],'category':n['category'],'explanation':n['explanation'][:400]} for s in state['sections'] if s['id'] in {p['section_id'] for p in passages} for n in (s.get('annotations') or {}).get('items', [])][:12], 'saved_assessment_basis':report.get('basis'),
             'saved_assessment_is_stale':stale(state, report) if report else None,
             'extraction_warnings':state.get('warnings', []),
-            'recent_conversation':[{'role':m['role'], 'content':m['content'][:6000]} for m in chat['messages'][-10:]],
+            'recent_conversation':[{'role':m['role'], 'content':m['content'][:6000]} for m in chat['messages'] if m.get('session_id')==session_id][-10:],
             'academic_results':search['results'] if search else [],
             'schema':Reply.model_json_schema(),
         }, True)
@@ -127,24 +199,30 @@ async def discuss(state, language, instruction, section_id=None, search_id=None)
         if not anchor:
             unmatched += 1
     stamp = now()
-    message = {'id':uuid4().hex, 'role':'assistant', 'content':reply.answer, 'created_at':stamp,
+    message = {'id':uuid4().hex, 'role':'assistant', 'content':reply.answer, 'created_at':stamp, 'session_id':session_id,
                'locations':locations, 'unmatched_evidence':unmatched,
                'follow_up_questions':reply.follow_up_questions, 'coverage':coverage,
                'external_sources':[{**item,'abstract':''} for item in (search['results'] if search else []) if item['id'] in reply.external_source_ids]}
     if reply.search_query.strip():
         message['search_proposal'] = {'id':uuid4().hex, 'query':reply.search_query.strip(),
                                       'reason':reply.search_reason, 'used':False}
-    chat['messages'].extend([{'id':uuid4().hex, 'role':'user', 'content':instruction, 'created_at':stamp,
+    chat['messages'].extend([{'id':uuid4().hex, 'role':'user', 'content':instruction, 'created_at':stamp, 'session_id':session_id,
                              'section_id':section_id, 'search_id':search_id}, message])
+    session['updated_at'] = stamp
+    if not session['title']:
+        session['title'] = ' '.join(instruction.split())[:90]
+    chat['last_session_id'] = session_id
     state['paper_chat'] = chat
     return state
 
 
-async def search(state, proposal_id, query, consent, language):
+async def search(state, proposal_id, query, consent, language, session_id=None):
     if consent is not True:
         raise HTTPException(422, 'Confirm this specific search query before internet access.')
-    chat = state.get('paper_chat') or {'messages':[], 'searches':[]}
-    proposal = next((m['search_proposal'] for m in chat['messages'] if m.get('search_proposal', {}).get('id')==proposal_id), None)
+    chat = history(state)
+    session = select_session(chat, session_id)
+    session_id = session['id']
+    proposal = next((m['search_proposal'] for m in chat['messages'] if m.get('session_id')==session_id and m.get('search_proposal', {}).get('id')==proposal_id), None)
     if not proposal:
         raise HTTPException(404, 'Search proposal not found in this paper conversation.')
     if proposal['used']:
@@ -163,11 +241,13 @@ async def search(state, proposal_id, query, consent, language):
                         'abstract':str(item.get('abstract') or '')[:5000],
                         'providers':item.get('providers', []), 'coverage':'abstract' if item.get('abstract') else 'metadata'})
     stamp = now()
-    saved = {'id':uuid4().hex, 'query':query, 'proposal_id':proposal_id, 'consented_at':stamp,
+    saved = {'id':uuid4().hex, 'query':query, 'proposal_id':proposal_id, 'consented_at':stamp, 'session_id':session_id,
              'providers':found['providers'], 'results':results, 'created_at':stamp}
     proposal['used'] = True
     chat['searches'].append(saved)
     chat['messages'].append({'id':uuid4().hex, 'role':'assistant', 'created_at':stamp, 'kind':'search_results',
-                             'search_id':saved['id'], 'content':('حُفظت نتائج البحث الأكاديمي. يمكنك طلب مقارنة أولية؛ النتائج تتضمن بيانات مرجعية وملخصات متاحة فقط، ولم تُقرأ النصوص الكاملة.' if language=='ar' else 'Academic search results are saved. Ask for a preliminary comparison; these are metadata and available abstracts only. Full texts have not been read.')})
+                             'search_id':saved['id'], 'session_id':session_id, 'content':('حُفظت نتائج البحث الأكاديمي. يمكنك طلب مقارنة أولية؛ النتائج تتضمن بيانات مرجعية وملخصات متاحة فقط، ولم تُقرأ النصوص الكاملة.' if language=='ar' else 'Academic search results are saved. Ask for a preliminary comparison; these are metadata and available abstracts only. Full texts have not been read.')})
+    session['updated_at'] = stamp
+    chat['last_session_id'] = session_id
     state['paper_chat'] = chat
     return state
