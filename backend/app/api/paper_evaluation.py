@@ -19,9 +19,12 @@ def workspace(db: Session = Depends(get_db), user: User = Depends(get_current_us
         if row is None:
             # A private paper container, not permission to create or edit general research projects.
             row = ResearchProject(owner_id=user.id, document_type='paper_evaluation_workspace',
-                                  working_title='تقييم أوراقي البحثية' if user.preferred_language == 'ar' else 'My paper evaluations',
+                                  working_title='المشروع رقم واحد' if user.preferred_language == 'ar' else 'Project Number One',
                                   writing_language=user.preferred_language)
             db.add(row)
             db.commit()
             db.refresh(row)
-        return {'id': row.id}
+        elif row.working_title in ('تقييم أوراقي البحثية', 'My paper evaluations'):
+            row.working_title='المشروع رقم واحد' if user.preferred_language == 'ar' else 'Project Number One'
+            db.commit()
+        return {'id': row.id, 'working_title': row.working_title}

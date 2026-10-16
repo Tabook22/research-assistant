@@ -88,3 +88,24 @@ def test_unprivileged_accounts_cannot_create_paper_containers():
     ah,_=admin();user=create(ah,grants=[]);h,_=login(user['username'])
     assert client.post('/api/paper-evaluation/workspace',headers=h).status_code==403
     assert client.post('/api/paper-evaluation/workspace').status_code==401
+
+
+def test_review_user_without_project_creation_receives_private_project_number_one():
+    ah,_=admin()
+    user=create(ah,grants=['paper_review'],preferred_language='en')
+    h,_=login(user['username'])
+    assert client.get('/api/projects',headers=h).json()==[]
+    first=client.post('/api/paper-evaluation/workspace',headers=h)
+    assert first.status_code==200 and first.json()['working_title']=='Project Number One'
+    again=client.post('/api/paper-evaluation/workspace',headers=h)
+    assert again.json()==first.json()
+    projects=client.get('/api/projects',headers=h).json()
+    assert len(projects)==1 and projects[0]['id']==first.json()['id']
+    assert client.post('/api/projects',headers=h,json={'working_title':'A second project'}).status_code==403
+    uploaded=client.post(f"/api/projects/{first.json()['id']}/paper-reviews",headers=h,files={'file':('paper.txt',SAMPLE.encode(),'text/plain')})
+    assert uploaded.status_code==201
+    other=create(ah,grants=['paper_review'],preferred_language='ar')
+    other_h,_=login(other['username'])
+    private=client.post('/api/paper-evaluation/workspace',headers=other_h).json()
+    assert private['working_title']=='المشروع رقم واحد' and private['id']!=first.json()['id']
+    assert client.get(f"/api/projects/{first.json()['id']}/paper-reviews",headers=other_h).status_code==403

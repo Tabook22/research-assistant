@@ -2554,3 +2554,7 @@ body.ui-ar .project-card-footer svg, body.ui-ar .sidebar-note a svg { transform:
 .admin-presets { display:flex; flex-wrap:wrap; gap:10px; margin:15px 0; }
 .review-setup-evaluation { grid-template-columns:minmax(0,1fr) auto; }
 @media(max-width:760px) { .review-setup-evaluation { grid-template-columns:1fr; } }
+
+.review-setup-evaluation { grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) auto; }
+.review-default-project { border:1px solid var(--border); border-radius:10px; background:#f5f9f6; color:var(--text); padding:14px 16px; min-height:50px; }
+@media(max-width:760px) { .review-setup-evaluation { grid-template-columns:1fr; } }

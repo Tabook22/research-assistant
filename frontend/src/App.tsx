@@ -26,7 +26,7 @@ function Protected({ children, grant, admin=false }: { children: React.ReactNode
   return <>{children}</>;
 }
 
-function Home(){const {can,user}=useAuth();return can('paper_evaluate')&&user?.permissions.every(grant=>grant==='paper_evaluate')?<Navigate to="/review" replace/>:<DashboardPage/>;}
+function Home(){const {can,user}=useAuth();return (can('paper_evaluate')&&user?.permissions.every(grant=>grant==='paper_evaluate')||(can('paper_review')&&!can('create_projects')&&!can('workspace')&&!can('research_desk')&&!can('library')&&!can('documents')&&!can('export')))?<Navigate to="/review" replace/>:<DashboardPage/>;}
 
 export default function App() {
   return (
