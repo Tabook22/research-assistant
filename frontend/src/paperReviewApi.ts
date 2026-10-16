@@ -35,6 +35,7 @@ export interface ScientificReport {rubric_version:string;paper_type:string;basis
 export interface ScientificCatalog {version:string;types:{id:string;en:string;ar:string}[];sources:{id:string;name:string;url:string;scope:string}[];reviewed_on:string;criteria:Record<string,ScientificCriterion[]>}
 const base = (project: number) => `/projects/${project}/paper-reviews`;
 export const paperReviewApi = {
+ evaluationWorkspace:(token:string)=>request<{id:number}>('/paper-evaluation/workspace',{method:'POST'},token),
  catalog:(token:string,project:number)=>request<ScientificCatalog>(`${base(project)}/criteria/catalog`,{},token),
  originalFile:(token:string,project:number,id:number)=>sourceBlob(`${base(project)}/${id}/file`,token),
  list: (token:string,project:number) => request<ReviewSummary[]>(base(project),{},token),

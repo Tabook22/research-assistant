@@ -30,7 +30,7 @@ def admin():
 
 def managed(headers,permissions=None):
     name='user.'+uuid4().hex[:12]
-    response=client.post('/api/admin/users',headers=headers,json={'username':name,'full_name':'QA Researcher','password':TEMP,'permissions':PERMISSIONS if permissions is None else permissions})
+    response=client.post('/api/admin/users',headers=headers,json={'username':name,'full_name':'QA Researcher','password':TEMP,'must_change_password':True,'permissions':PERMISSIONS if permissions is None else permissions})
     assert response.status_code==201,response.text
     session,user=login(name)
     assert user['must_change_password']
@@ -99,7 +99,7 @@ def test_promotion_demotion_deactivation_and_password_reset():
     assert client.patch(url,headers=ah,json={'is_superuser':False,'is_active':False}).status_code==200
     assert client.get('/api/auth/me',headers=elevated).status_code==401
     assert client.post('/api/auth/login',json={'username':user['username'],'password':CHANGED}).status_code==401
-    assert client.patch(url,headers=ah,json={'is_active':True,'password':TEMP}).status_code==200
+    assert client.patch(url,headers=ah,json={'is_active':True,'password':TEMP,'must_change_password':True}).status_code==200
     reset,row=login(user['username'])
     assert row['must_change_password'] and not row['is_superuser']
     assert client.get('/api/projects',headers=reset).status_code==403

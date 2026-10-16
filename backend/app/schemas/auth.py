@@ -65,6 +65,7 @@ class AccountUpdate(BaseModel):
     def password_length(cls,value):return valid_password(value) if value is not None else value
 
 class ManagedUserCreate(BaseModel):
+    must_change_password: bool = False
     username: str
     full_name: str = Field(min_length=1,max_length=255)
     email: EmailStr | None = None
@@ -82,6 +83,7 @@ class ManagedUserCreate(BaseModel):
         return list(dict.fromkeys(value))
 
 class ManagedUserUpdate(BaseModel):
+    must_change_password: bool | None = None
     username: str | None = None
     full_name: str | None = Field(default=None,min_length=1,max_length=255)
     is_active: bool | None = None

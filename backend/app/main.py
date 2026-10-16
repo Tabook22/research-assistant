@@ -71,9 +71,10 @@ app.add_middleware(
 
 api = FastAPI()  # not used; routers mounted on main
 app.include_router(auth.router, prefix="/api")
-from app.api import admin_ai
+from app.api import admin_ai, paper_evaluation
 app.include_router(admin.router, prefix="/api")
 app.include_router(admin_ai.router, prefix="/api")
+app.include_router(paper_evaluation.router, prefix="/api")
 app.include_router(paper_reviews.router, prefix="/api")
 app.include_router(research_desk.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")

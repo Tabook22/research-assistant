@@ -2548,3 +2548,9 @@ body.ui-ar .project-card-footer svg, body.ui-ar .sidebar-note a svg { transform:
 .rewrite-text { white-space:pre-wrap; line-height:2; padding:22px; background:#f4f9f5; border:1px solid #d9e7dd; border-radius:12px; overflow-wrap:anywhere; }
 @media(max-width:1000px) { .rewrite-comparison { grid-template-columns:1fr; } }
 @media(max-width:760px) { .rewrite-settings .assessment-settings { grid-template-columns:1fr; } }
+
+.admin-password-policy { display:flex; align-items:start; gap:10px; margin:10px 0 22px; font-size:.85rem; }
+.admin-password-policy small { display:block; color:var(--text-muted); line-height:1.8; margin-top:6px; }
+.admin-presets { display:flex; flex-wrap:wrap; gap:10px; margin:15px 0; }
+.review-setup-evaluation { grid-template-columns:minmax(0,1fr) auto; }
+@media(max-width:760px) { .review-setup-evaluation { grid-template-columns:1fr; } }

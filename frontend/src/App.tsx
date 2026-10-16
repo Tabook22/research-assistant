@@ -22,9 +22,11 @@ function Protected({ children, grant, admin=false }: { children: React.ReactNode
   if(error)return <main className="container account-main"><h1>{lang==='ar'?'تعذر تحميل الحساب':'Could not load your account'}</h1><p>{error}</p><button className="btn" onClick={()=>window.location.reload()}>{lang==='ar'?'إعادة المحاولة':'Retry'}</button></main>;
   if(user?.must_change_password&&location.pathname!=='/account')return <Navigate to="/account" replace/>;
   const needed=grant==='panel'?panelPermission(params.panel||''):grant;
-  if((admin&&!user?.is_superuser)||(needed&&!can(needed)))return <main className="container account-main"><h1>{lang==='ar'?'هذه الصفحة غير متاحة لحسابك':'This page is not enabled for your account'}</h1><p>{lang==='ar'?'تواصل مع مسؤول النظام لتغيير صلاحياتك.':'Ask your administrator to change your page permissions.'}</p><Link className="btn" to="/">{lang==='ar'?'العودة لمساحتي':'Back to my workspace'}</Link></main>;
+  if((admin&&!user?.is_superuser)||(needed&&!(needed==='paper_review'?(can('paper_review')||can('paper_evaluate')):can(needed))))return <main className="container account-main"><h1>{lang==='ar'?'هذه الصفحة غير متاحة لحسابك':'This page is not enabled for your account'}</h1><p>{lang==='ar'?'تواصل مع مسؤول النظام لتغيير صلاحياتك.':'Ask your administrator to change your page permissions.'}</p><Link className="btn" to="/">{lang==='ar'?'العودة لمساحتي':'Back to my workspace'}</Link></main>;
   return <>{children}</>;
 }
+
+function Home(){const {can,user}=useAuth();return can('paper_evaluate')&&user?.permissions.every(grant=>grant==='paper_evaluate')?<Navigate to="/review" replace/>:<DashboardPage/>;}
 
 export default function App() {
   return (
@@ -42,7 +44,7 @@ export default function App() {
         path="/"
         element={
           <Protected>
-            <DashboardPage />
+            <Home />
           </Protected>
         }
       />

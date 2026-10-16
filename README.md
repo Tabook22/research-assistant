@@ -135,6 +135,14 @@ After generation, **Create independent copy & reassess** creates a separate priv
 
 Rewriting cannot supply missing empirical data, real findings, verified citations or ethics approvals. Prompts require explicit inline input/verification placeholders and prohibit invented evidence, references or guarantees of publication or complete scientific compliance. Generated statements still require human verification. Failed or invalid requests retain completed checkpoints and previous proposals. The feature uses the existing project ownership and paper-review permissions.
 
+## Permanent credentials and upload/evaluation-only users
+
+Administrator-created accounts use permanent passwords by default: no first-login password change is required. The administration form includes an optional **Require password change at sign-in** checkbox. The same flag can be changed for an existing user without changing their password. Administrator password resets also default to permanent unless the flag is explicitly enabled. Existing account policies are preserved until an administrator changes them; password/permission changes continue to revoke old sessions.
+
+Choose the **Upload & evaluate only** permission preset for a restricted reviewer. These users land directly on `/review` and receive a private paper container automatically, without permission to create general research projects. They can upload and read their own papers, analyze the overview and sections, inspect strengths and weaknesses, assess scientific criteria and export the assessment report. Discussion, saved-draft editing, proposed rewrites, whole-paper generation and other research tools are hidden and rejected by server-side route checks. Administrators retain access to their papers and can change the grants later.
+
+The dedicated container endpoint serializes initial creation in the deployed single API process. Multi-process deployment would require database-level uniqueness for that container, alongside the existing job-runner scaling changes.
+
 ## Core workflows
 
 1. Register / sign in  

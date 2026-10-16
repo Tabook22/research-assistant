@@ -40,7 +40,7 @@ def users(db:Session=Depends(get_db)):
 def create_user(payload:ManagedUserCreate,db:Session=Depends(get_db)):
     data=payload.model_dump(exclude={'password'})
     data['email']=str(payload.email).lower() if payload.email else payload.username+'@accounts.invalid'
-    row=User(**data,hashed_password=hash_password(payload.password),must_change_password=True)
+    row=User(**data,hashed_password=hash_password(payload.password))
     db.add(row);commit(db);db.refresh(row)
     return row
 
@@ -51,7 +51,7 @@ def edit_user(user_id:int,payload:ManagedUserUpdate,db:Session=Depends(get_db),a
     if user_id==admin.id and (values.get('is_active') is False or values.get('is_superuser') is False):
         raise HTTPException(409,'You cannot deactivate or demote your own administrator account.')
     if payload.password:
-        values.update(hashed_password=hash_password(payload.password),must_change_password=True)
+        values.update(hashed_password=hash_password(payload.password),must_change_password=payload.must_change_password if payload.must_change_password is not None else False)
     values['auth_version']=User.auth_version+1
     query=update(User).where(User.id==user_id)
     if values.get('is_active') is False or values.get('is_superuser') is False:
