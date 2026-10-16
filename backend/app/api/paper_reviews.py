@@ -18,6 +18,7 @@ from app.models.paper_review import PaperReview
 from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate, ComplianceStart, RewriteStart
 from app.services import scientific_assessment as assessment
 from app.services import paper_rewrite
+from app.services import paper_annotations
 from app.services import scientific_rubric
 from app.services.access import get_project_for_user
 from app.services import paper_review_service as svc
@@ -58,6 +59,13 @@ def section_state(row,section_id,version):
     if section is None:
         raise HTTPException(404,"Section not found")
     return state,section
+
+@router.post('/{review_id}/sections/{section_id}/annotations')
+async def passage_annotations(project_id:int, review_id:int, section_id:int, payload:AnalyzeRequest, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    state,section=section_state(row,section_id,payload.version)
+    state=await paper_annotations.annotate(state,section,row.language)
+    return save(db,row,state,payload.version)
 
 @router.get("")
 def list_reviews(project_id:int,db:Session=Depends(get_db),user:User=Depends(get_current_user)):

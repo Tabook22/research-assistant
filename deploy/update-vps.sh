@@ -20,7 +20,7 @@ echo 'Building frontend for /reguide/ ...'
 cd "$SOURCE/frontend"
 npm ci --no-audit --no-fund
 VITE_BASE_PATH=/reguide/ VITE_API_BASE=/reguide/api npm run build
-node --test .verification/paper-analysis.test.cjs .verification/source-anchors.test.cjs
+node --test .verification/*.test.cjs
 
 STAMP="$(date -u +%Y%m%d-%H%M%S)-${REVISION:0:8}"
 BACKUP="$APP/deploy/backups/$STAMP"

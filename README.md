@@ -143,6 +143,12 @@ Choose the **Upload & evaluate only** permission preset for a restricted reviewe
 
 The dedicated container endpoint serializes initial creation in the deployed single API process. Multi-process deployment would require database-level uniqueness for that container, alongside the existing job-runner scaling changes.
 
+## Visual paper review
+
+The paper review page opens a read-only visual studio, including for evaluation-only accounts. Saved-paper cards, a section outline and constructive passage notes connect feedback to server-verified excerpts of the extracted original. Notes distinguish strengths, improvements and verification needs. Suggested passage wording is compared with the original using a whitespace-preserving word diff; proposals never update source text or drafts.
+
+Start passage review explicitly to use the configured analysis model. Each section is persisted independently; pausing finishes the current request and continuation skips saved sections. A section can be refreshed separately. Unmatched model quotes never become source highlights or replacement comparisons. PDF page links appear only when the excerpt also matches an extracted source page; highlights are in the extracted-text reader, not overlaid on PDF pixels. Viewed-note checkboxes are session-only reading aids, not completion or compliance scores. Full-access users can switch back to discussion and editing tools.
+
 ## Core workflows
 
 1. Register / sign in  

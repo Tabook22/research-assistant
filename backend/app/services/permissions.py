@@ -19,7 +19,7 @@ def enforce(user, path: str, method: str):
         if paper_path:
             suffix = paper_path.group('suffix') or ''
             allowed = ((method == 'GET' and (not suffix or re.fullmatch(r'/\d+(?:/file)?', suffix) or suffix == '/criteria/catalog'))
-                       or (method == 'POST' and (not suffix or re.fullmatch(r'/\d+/(?:analyze|sections/\d+/analyze|compliance/(?:start|next))', suffix))))
+                       or (method == 'POST' and (not suffix or re.fullmatch(r'/\d+/(?:analyze|sections/\d+/(?:analyze|annotations)|compliance/(?:start|next))', suffix))))
             if not allowed:
                 raise HTTPException(403, 'This account can upload, read, analyze and assess papers only.')
             return

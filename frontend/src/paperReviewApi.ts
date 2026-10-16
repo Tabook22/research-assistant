@@ -9,7 +9,9 @@ export interface ReviewSection {
  draft: string | null; proposed_text?: string; analysis: ReviewFinding | null;
  revisions: {text: string; saved_at: string}[];
  messages: {role: string; content: string; created_at: string}[];
+ annotations?: {items:PassageNote[];created_at:string};
 }
+export interface PassageNote {id:string;category:'strength'|'improvement'|'verification';severity:'low'|'medium'|'high';title:string;explanation:string;location:SourceLocation|null;replacement:string}
 export interface PaperReview {
  id: number; project_id: number; filename: string; language: string; version: number;
  sections: ReviewSection[]; overview: ReviewFinding | null;
@@ -64,6 +66,21 @@ export async function analyzePaper(
   progress(current,String(section.id));
   current=await paperReviewApi.action(token,project,current,`sections/${section.id}/analyze`,{});
   progress(current,"");
+ }
+ return current;
+}
+
+export async function reviewPassages(
+ token:string,project:number,initial:PaperReview,
+ progress:(review:PaperReview,section:string)=>void,stopped:()=>boolean,only?:number,
+){
+ let current=initial;
+ const pending=initial.sections.filter(section=>only?section.id===only:!section.annotations);
+ for(const section of pending){
+  if(stopped())break;
+  progress(current,section.title);
+  current=await paperReviewApi.action(token,project,current,`sections/${section.id}/annotations`,{});
+  progress(current,'');
  }
  return current;
 }

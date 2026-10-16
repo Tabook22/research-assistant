@@ -45,3 +45,38 @@ test('refresh tracks unfinished sections while retaining older findings',async()
  const retry=server(latest);await runner(retry.request)('test',1,latest,()=>{},()=>false);
  assert.equal(retry.paths.length,2);assert.ok(retry.paths.every(p=>p.includes('/sections/')));
 });
+
+
+test('passage critique checkpoints survive failure and resume only unfinished sections',async()=>{
+ const initial=makeReview();let saved=structuredClone(initial),fail=true;const paths=[];
+ const exports={};vm.runInNewContext(source,{exports,require:()=>({request:async(path,options)=>{
+  const body=JSON.parse(options.body);assert.equal(body.version,saved.version);
+  const id=Number(path.match(/sections\/(\d+)/)[1]);paths.push(id);
+  if(id===2&&fail)throw Error('AI_TIMEOUT');
+  saved=structuredClone(saved);saved.version++;
+  saved.sections.find(s=>s.id===id).annotations={items:[],created_at:'synthetic'};
+  return structuredClone(saved);
+ }})});
+ let current=initial;
+ await assert.rejects(exports.reviewPassages('test',1,current,(r,label)=>{if(!label)current=r;},()=>false),/AI_TIMEOUT/);
+ assert.equal(current.version,2);assert.ok(current.sections[0].annotations);
+ fail=false;paths.length=0;
+ const result=await exports.reviewPassages('test',1,current,()=>{},()=>false);
+ assert.deepEqual(paths,[2,3]);assert.ok(result.sections.every(s=>s.annotations));
+ assert.ok(result.sections.every(s=>s.draft==='Saved draft'));
+});
+test('passage critique pause finishes one section and refresh targets only the requested section',async()=>{
+ let saved=makeReview(),stopped=false;const paths=[];const exports={};
+ vm.runInNewContext(source,{exports,require:()=>({request:async(path,options)=>{
+  assert.equal(JSON.parse(options.body).version,saved.version);
+  const id=Number(path.match(/sections\/(\d+)/)[1]);paths.push(id);
+  saved=structuredClone(saved);saved.version++;
+  saved.sections.find(s=>s.id===id).annotations={items:[],created_at:'synthetic'};
+  return structuredClone(saved);
+ }})});
+ const result=await exports.reviewPassages('test',1,saved,(_,label)=>{if(!label)stopped=true;},()=>stopped);
+ assert.deepEqual(paths,[1]);assert.ok(result.sections[0].annotations);assert.ok(!result.sections[1].annotations);
+ paths.length=0;
+ await exports.reviewPassages('test',1,result,()=>{},()=>false,1);
+ assert.deepEqual(paths,[1]);
+});
