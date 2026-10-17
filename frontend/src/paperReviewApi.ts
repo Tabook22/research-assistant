@@ -13,6 +13,8 @@ export interface ReviewSection {
 }
 export interface PassageNote {id:string;category:'strength'|'improvement'|'verification';severity:'low'|'medium'|'high';title:string;explanation:string;location:SourceLocation|null;replacement:string}
 export interface PaperReview {
+ presentation?: PaperPresentation;
+ previous_presentation?: PaperPresentation;
  audience_questions?: AudienceQuestionSet;
  previous_audience_questions?: AudienceQuestionSet;
  rewrite_limits?: RewriteLimits;
@@ -32,6 +34,9 @@ export interface PaperReview {
  paper_chat?: PaperChatHistory;
 }
 export type AudienceFormat='essay'|'multiple_choice'|'fill_blank'|'mixed';
+export type SlideTheme='emerald'|'midnight'|'editorial';
+export interface PaperSlide {id:number;title:string;focus:string;visual:'network'|'process'|'library'|'globe'|'science'|'balance';image_ready?:boolean;image_prompt_used?:string;image_style?:string;content:{bullets:string[];notes:string;image_prompt:string;location:SourceLocation;edited:boolean}|null}
+export interface PaperPresentation {id:string;title:string;count:number;theme:SlideTheme;language:string;section_ids:number[];focus:string;created_at:string;updated_at:string;complete:boolean;stale:boolean;coverage:{mode:string;supplied_characters:number;total_characters:number};slides:PaperSlide[]}
 export interface AudienceQuestion {id:number;format:Exclude<AudienceFormat,'mixed'>;topic:string;question:string;why_asked:string;answer:string;options:string[];correct_index:number|null;location:SourceLocation}
 export interface AudienceQuestionSet {count:number;format:AudienceFormat;section_id:number|null;language:string;created_at:string;updated_at:string;complete:boolean;stale:boolean;coverage:{mode:string;supplied_characters:number;total_characters:number};questions:AudienceQuestion[]}
 export interface PaperChatSession {id:string;number:number;title:string;created_at:string|null;updated_at:string|null;question_count:number;message_count:number;search_count:number;preview:string}

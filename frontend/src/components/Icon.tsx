@@ -1,4 +1,8 @@
 const paths = {
+ presentation: "M3 3h18v13H3z M12 16v5 M8 21h8 M7 8h3v4H7z M14 7h3 M14 11h3",
+ image: "M3 3h18v18H3z M3 17l6-6 4 4 3-3 5 5 M9 7h.01",
+ download: "M12 3v12 M7 10l5 5 5-5 M4 16v5h16v-5",
+ palette: "M12 3a9 9 0 1 0 0 18h2a2 2 0 0 0 0-4h-1a2 2 0 0 1 0-4h4a4 4 0 0 0 4-4c0-3-4-6-9-6 M7 8h.01 M11 6h.01 M16 8h.01 M6 13h.01",
  audience: "M8 14a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M2 22v-2a6 6 0 0 1 12 0v2 M16 13a3 3 0 0 1 3 3 M18 22v-2a5 5 0 0 0-2-4 M15 2h7v7h-3l-3 3V9h-1z M18 4.5h1.5 M18.75 7h.01",
  questions: "M5 3h14v14h-7l-5 4v-4H5z M10 7a2 2 0 1 1 3 1.7c-.7.4-1 1-1 1.8 M12 13h.01",
  number: "M9 3L7 21 M17 3l-2 18 M4 8h17 M3 16h17",

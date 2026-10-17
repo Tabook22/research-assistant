@@ -1,7 +1,7 @@
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, SecretStr
 
-Purpose = Literal['analysis', 'discussion']
+Purpose = Literal['analysis', 'discussion', 'images']
 Provider = Literal['openai', 'anthropic', 'gemini', 'xai', 'deepseek', 'mistral']
 
 

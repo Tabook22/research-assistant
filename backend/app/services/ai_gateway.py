@@ -36,7 +36,7 @@ async def exchange(profile, method, path, *, body=None, params=None):
     if profile.provider == 'anthropic':
         headers = {'x-api-key': profile.key, 'anthropic-version': '2023-06-01'}
     try:
-        async with httpx.AsyncClient(timeout=120, follow_redirects=False) as client:
+        async with httpx.AsyncClient(timeout=150 if profile.purpose == 'images' else 120, follow_redirects=False) as client:
             response = await client.request(method, profile.base_url + path, headers=headers, json=body, params=params)
         if not 200 <= response.status_code < 300:
             try:
@@ -122,6 +122,10 @@ async def models(profile):
         for item in items:
             ident = item.get('id', '')
             if not isinstance(ident, str) or not ident:
+                continue
+            if profile.purpose == 'images':
+                if ident.startswith('gpt-image-'):
+                    found[ident] = {'id': ident, 'name': ident, 'created': item.get('created')}
                 continue
             if item.get('capabilities', {}).get('completion_chat') is False:
                 continue

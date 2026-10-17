@@ -49,6 +49,8 @@ def decrypt(value):
 
 
 def environment(purpose):
+    if purpose == 'images':
+        return Profile('images', 'openai', '', '', use_environment=False, base_url=PROVIDERS['openai']['base_url'])
     cfg = get_settings()
     provider = cfg.ai_provider if cfg.ai_provider in PROVIDERS else 'xai'
     return Profile(purpose, provider, cfg.ai_model, cfg.xai_api_key,
@@ -72,6 +74,8 @@ def public(profile):
 
 
 def candidate(purpose, payload, db, require_model=True):
+    if purpose == 'images' and (payload.provider != 'openai' or payload.use_environment or (require_model and not payload.model.startswith('gpt-image-'))):
+        raise HTTPException(422, 'AI_CONFIGURATION: Images require an explicit OpenAI key and a GPT Image model identifier.')
     current = load(purpose, db)
     if payload.use_environment and payload.provider != environment(purpose).provider:
         raise HTTPException(422, 'The deployment key can only be used with its original provider.')

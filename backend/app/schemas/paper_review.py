@@ -62,3 +62,21 @@ class AudienceQuestionStart(AnalyzeRequest):
     format: Literal['essay', 'multiple_choice', 'fill_blank', 'mixed'] = 'essay'
     section_id: int | None = Field(default=None, ge=1)
     language: Literal['en', 'ar'] | None = None
+
+class PresentationStart(AnalyzeRequest):
+    count: int = Field(default=10, ge=3, le=20, strict=True)
+    title: str = Field(default='', max_length=120)
+    focus: str = Field(default='', max_length=2000)
+    section_ids: list[int] = Field(default_factory=list, max_length=30)
+    language: Literal['en', 'ar'] | None = None
+    theme: Literal['emerald', 'midnight', 'editorial'] = 'emerald'
+
+class SlideEdit(AnalyzeRequest):
+    title: str = Field(min_length=1, max_length=110)
+    focus: str = Field(min_length=1, max_length=250)
+    bullets: list[str] | None = Field(default=None, max_length=3)
+    notes: str = Field(default='', max_length=1800)
+
+class SlideImage(AnalyzeRequest):
+    prompt: str = Field(min_length=10, max_length=1600)
+    style: Literal['editorial', 'photographic', 'isometric'] = 'editorial'

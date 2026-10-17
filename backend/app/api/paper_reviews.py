@@ -17,11 +17,11 @@ from app.database import get_db
 from app.config import get_settings
 from app.models.user import User
 from app.models.paper_review import PaperReview
-from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate, ComplianceStart, RewriteStart, RewriteMerge, PaperChatRequest, PaperChatSearch, ChatSessionCreate, ChatSessionRename, AudienceQuestionStart
+from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate, ComplianceStart, RewriteStart, RewriteMerge, PaperChatRequest, PaperChatSearch, ChatSessionCreate, ChatSessionRename, AudienceQuestionStart, PresentationStart, SlideEdit, SlideImage
 from app.services import scientific_assessment as assessment
 from app.services import paper_rewrite, rewrite_policy
 from app.services import paper_annotations
-from app.services import paper_chat, audience_questions
+from app.services import paper_chat, audience_questions, paper_presentation
 from app.services import scientific_rubric
 from app.services.access import get_project_for_user
 from app.services import paper_review_service as svc
@@ -49,6 +49,9 @@ def result(row):
     for key in ('audience_questions', 'previous_audience_questions'):
         if state.get(key):
             state[key]['stale'] = audience_questions.stale(state, state[key])
+    for key in ('presentation', 'previous_presentation'):
+        if state.get(key):
+            state[key] = paper_presentation.public(state,state[key])
     state['rewrite_limits']=rewrite_policy.effective(object_session(row),row.project_id,row.id)
     return {"id":row.id,"project_id":row.project_id,"filename":row.filename,"language":row.language,"version":row.version,"updated_at":row.updated_at,**state}
 
@@ -108,6 +111,46 @@ def create_chat_session(project_id:int, review_id:int, payload:ChatSessionCreate
     row=load(db,project_id,review_id,user)
     if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
     return save(db,row,paper_chat.create_session(deepcopy(row.state),payload.title),payload.version)
+
+@router.post('/{review_id}/presentation/start')
+async def start_presentation(project_id:int, review_id:int, payload:PresentationStart, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
+    state=await paper_presentation.start(deepcopy(row.state),payload.language or row.language,payload)
+    return save(db,row,state,payload.version)
+
+@router.post('/{review_id}/presentation/next')
+async def next_presentation(project_id:int, review_id:int, payload:AnalyzeRequest, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
+    return save(db,row,await paper_presentation.advance(deepcopy(row.state)),payload.version)
+
+@router.patch('/{review_id}/presentation/slides/{slide_id}')
+def edit_presentation_slide(project_id:int, review_id:int, slide_id:int, payload:SlideEdit, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
+    return save(db,row,paper_presentation.edit(deepcopy(row.state),slide_id,payload),payload.version)
+
+@router.post('/{review_id}/presentation/slides/{slide_id}/image')
+async def generate_presentation_image(project_id:int, review_id:int, slide_id:int, payload:SlideImage, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
+    state,path=await paper_presentation.image(deepcopy(row.state),slide_id,payload,project_id,review_id)
+    try:
+        return save(db,row,state,payload.version)
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+
+@router.get('/{review_id}/presentation/{deck_id}/slides/{slide_id}/image')
+def presentation_image(project_id:int, review_id:int, deck_id:str, slide_id:int, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    deck=row.state.get('presentation') or {}
+    slide=next((s for s in deck.get('slides',[]) if s['id']==slide_id),{})
+    if deck.get('id')!=deck_id or not slide.get('_image_file'):raise HTTPException(404,'Image not found.')
+    path=Path(slide['_image_file']).resolve()
+    if not path.is_relative_to(paper_presentation.image_root(project_id,review_id)) or not path.is_file():raise HTTPException(404,'Image unavailable.')
+    return FileResponse(path,media_type='image/png',headers={'Cache-Control':'private, no-store'})
 
 @router.patch('/{review_id}/chat/sessions/{session_id}')
 def rename_chat_session(project_id:int, review_id:int, session_id:str, payload:ChatSessionRename, db:Session=Depends(get_db), user:User=Depends(get_current_user)):

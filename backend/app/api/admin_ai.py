@@ -16,7 +16,7 @@ def settings(db: Session = Depends(get_db)):
     deployment = configuration.environment('analysis')
     return {'providers': [{'id': key, **value} for key, value in configuration.PROVIDERS.items()],
             'deployment': {'provider': deployment.provider, 'model': deployment.model, 'has_key': bool(deployment.key)},
-            'profiles': [configuration.public(configuration.load(purpose, db)) for purpose in ('analysis', 'discussion')]}
+            'profiles': [configuration.public(configuration.load(purpose, db)) for purpose in ('analysis', 'discussion', 'images')]}
 
 
 @router.put('/{purpose}')
@@ -34,6 +34,11 @@ async def models(purpose: Purpose, payload: AIProfileInput, db: Session = Depend
 async def test(purpose: Purpose, payload: AIProfileInput, db: Session = Depends(get_db)):
     profile = configuration.candidate(purpose, payload, db)
     start = time.monotonic()
+    if purpose == 'images':
+        catalogue = await ai_gateway.models(profile)
+        if profile.model not in {item['id'] for item in catalogue}:
+            raise HTTPException(422, 'AI_CONFIGURATION: Image model is not in the account catalogue.')
+        return {'ok': True, 'provider': profile.provider, 'model': profile.model, 'elapsed_ms': round(1000 * (time.monotonic() - start))}
     raw = await ai_gateway.complete(profile, [{'role': 'user', 'content': 'Synthetic connection test. Return exactly this JSON object: {"ok":true}'}], True)
     try:
         valid = json.loads(raw).get('ok') is True
