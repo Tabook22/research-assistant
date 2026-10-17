@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState, type TextareaHTMLAttributes } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type Ref, type TextareaHTMLAttributes } from "react";
 import { useSpeechToText } from "../hooks/useSpeechToText";
 import { useI18n } from "../i18n/I18nContext";
 import {
@@ -14,6 +14,8 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "value" | "onChan
   language?: string | null;
   compact?: boolean;
   label?: string;
+  inputRef?: Ref<HTMLTextAreaElement>;
+  onListeningChange?: (listening: boolean) => void;
 };
 
 const MODE_STORAGE_KEY = "rg_voice_lang_mode";
@@ -37,9 +39,12 @@ export default function VoiceTextField({
   className,
   disabled,
   placeholder,
+  inputRef,
+  onListeningChange,
   ...rest
 }: Props) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const [limitReached, setLimitReached] = useState(false);
   const generatedId = useId();
   const fieldId = rest.id || generatedId;
   const [mode, setMode] = useState<VoiceLangMode>(() => loadMode());
@@ -52,11 +57,13 @@ export default function VoiceTextField({
       const piece = payload.text.trim();
       if (!piece) return;
       const current = valueRef.current;
-      const next = current ? `${current.trimEnd()} ${piece}` : piece;
+      const appended = current ? `${current.trimEnd()} ${piece}` : piece;
+      const next = rest.maxLength === undefined ? appended : appended.slice(0, rest.maxLength);
+      setLimitReached(next.length < appended.length);
       valueRef.current = next;
       onChange(next);
     },
-    [onChange]
+    [onChange, rest.maxLength]
   );
 
   const onLanguageResolved = useCallback(
@@ -94,6 +101,17 @@ export default function VoiceTextField({
     if (disabled && listening) stop();
   }, [disabled, listening, stop]);
 
+  useEffect(() => { onListeningChange?.(listening); }, [listening, onListeningChange]);
+  useEffect(() => () => { onListeningChange?.(false); }, [onListeningChange]);
+  useEffect(() => { if (limitReached) stop(); }, [limitReached, stop]);
+
+  const localizedError = !error || lang !== 'ar' ? error
+    : error.includes('permission denied') ? 'تعذر استخدام الميكروفون. اسمح بالوصول إليه من إعدادات المتصفح.'
+    : error.includes('network') ? 'تعذر الاتصال بخدمة تحويل الصوت إلى نص. تحقق من اتصالك وحاول مجددًا.'
+    : error.includes('not supported in this browser') ? 'هذا المتصفح لا يدعم الإدخال الصوتي. جرّب Chrome أو Edge أو اكتب سؤالك.'
+    : error.includes('speech recognition is not available') ? 'التعرّف على الكلام باللغة المختارة غير متاح. جرّب متصفحًا آخر أو اكتب سؤالك.'
+    : 'تعذر تشغيل الإدخال الصوتي. تحقق من اتصال الميكروفون وصلاحياته ثم حاول مجددًا.';
+
   useEffect(() => {
     try {
       localStorage.setItem(MODE_STORAGE_KEY, mode);
@@ -127,7 +145,7 @@ export default function VoiceTextField({
         {label ? <label htmlFor={fieldId} className="voice-field-label">{label}</label> : <span />}
         {supported && (
           <div className="voice-controls">
-            <div className="voice-lang-modes" role="group" aria-label="Voice language">
+            <div className="voice-lang-modes" role="group" aria-label={lang === 'ar' ? 'لغة الإدخال الصوتي' : 'Voice language'}>
               <button
                 type="button"
                 className={`voice-lang-btn ${mode === "auto" ? "active" : ""}`}
@@ -161,6 +179,7 @@ export default function VoiceTextField({
               className={`btn voice-mic ${listening ? "listening" : ""}`}
               onClick={() => {
                 clearError();
+                setLimitReached(false);
                 setResolvedNote(null);
                 toggle();
               }}
@@ -190,6 +209,7 @@ export default function VoiceTextField({
       </div>
 
       <textarea
+        ref={inputRef}
         id={fieldId}
         aria-label={label || placeholder}
         {...rest}
@@ -226,11 +246,13 @@ export default function VoiceTextField({
 
       {error && (
         <div className="voice-status voice-error" role="alert">
-          {error}
+          {localizedError}
         </div>
       )}
 
-      {!supported && !compact && (
+      {limitReached && <div className="voice-status voice-error" role="status">{lang === 'ar' ? 'بلغ النص الحد الأقصى. راجعه قبل الإرسال.' : 'Text limit reached. Review your message before sending.'}</div>}
+
+      {!supported && (
         <p className="muted voice-hint">{t("voice.unsupportedHint")}</p>
       )}
       {supported && !compact && !listening && (

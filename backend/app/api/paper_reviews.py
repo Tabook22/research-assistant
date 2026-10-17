@@ -5,6 +5,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import uuid4
+import hashlib
+import json
 from fastapi.responses import FileResponse
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import update
@@ -15,7 +17,7 @@ from app.database import get_db
 from app.config import get_settings
 from app.models.user import User
 from app.models.paper_review import PaperReview
-from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate, ComplianceStart, RewriteStart, PaperChatRequest, PaperChatSearch, ChatSessionCreate, ChatSessionRename
+from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate, ComplianceStart, RewriteStart, RewriteMerge, PaperChatRequest, PaperChatSearch, ChatSessionCreate, ChatSessionRename
 from app.services import scientific_assessment as assessment
 from app.services import paper_rewrite
 from app.services import paper_annotations
@@ -241,6 +243,25 @@ def copy_rewrite(project_id:int,review_id:int,payload:AnalyzeRequest,db:Session=
     copied=PaperReview(project_id=project_id,filename=Path(row.filename).stem[:180]+'-AI-proposal.txt',language=row.language,state=copied_state)
     db.add(copied);db.flush()
     state['rewrite']['copy_id']=copied.id
+    save(db,row,state,payload.version)
+    db.refresh(copied)
+    return result(copied)
+
+
+@router.post('/{review_id}/rewrite/merge')
+def merge_rewrite(project_id:int,review_id:int,payload:RewriteMerge,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
+    state=deepcopy(row.state)
+    copied_state=paper_rewrite.copy_state(state,row.language,payload.choices)
+    key=hashlib.sha256(json.dumps([c.model_dump() for c in sorted(payload.choices,key=lambda c:c.section_id)],sort_keys=True).encode()).hexdigest()
+    copies=state['rewrite'].setdefault('merged_copies',{})
+    if key in copies:
+        return result(load(db,project_id,copies[key],user))
+    copied_state['origin_review_id']=row.id
+    copied=PaperReview(project_id=project_id,filename=Path(row.filename).stem[:180]+'-merged.txt',language=row.language,state=copied_state)
+    db.add(copied);db.flush()
+    copies[key]=copied.id
     save(db,row,state,payload.version)
     db.refresh(copied)
     return result(copied)

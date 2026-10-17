@@ -4,6 +4,9 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import Icon from "../components/Icon";
 import LanguageSwitcher from "../components/LanguageSwitcher";
+import ResearchWelcome from "../components/ResearchWelcome";
+import ResearchLaunchpad from "../components/ResearchLaunchpad";
+import "../components/memberExperience.css";
 import { useI18n } from "../i18n/I18nContext";
 import { documentTypeLabel } from "../i18n/translations";
 import type { ProjectSummary, StageDefinition } from "../types";
@@ -36,6 +39,7 @@ export default function DashboardPage() {
  const completed = projects.filter((p) => progress(p) === 100).length;
  const shown = projects.filter((p) => `${p.working_title} ${p.research_field || ""} ${documentTypeLabel(lang, p.document_type)}`.toLocaleLowerCase().includes(query.toLocaleLowerCase().trim()) && (filter === "all" || (filter === "complete" ? progress(p) === 100 : progress(p) < 100)))
   .sort((a,b) => sort === "title" ? a.working_title.localeCompare(b.working_title, lang) : sort === "progress" ? progress(b)-progress(a) : Date.parse(b.updated_at)-Date.parse(a.updated_at));
+ const latestProject = error ? undefined : [...projects].sort((a,b)=>Date.parse(b.updated_at)-Date.parse(a.updated_at))[0];
  const firstName = user?.full_name?.trim().split(/\s+/)[0];
  return <div className="dashboard-shell">
   <a className="skip-link" href="#main-content">{copy("Skip to content", "انتقل إلى المحتوى")}</a>
@@ -60,7 +64,8 @@ export default function DashboardPage() {
   <div className="dashboard-content">
    <header className="dashboard-topbar"><span>{copy("Workspace", "مساحة العمل")}<span className="breadcrumb-separator">/</span><strong>{copy("Overview", "نظرة عامة")}</strong></span><LanguageSwitcher /></header>
    <main id="main-content" className="dashboard-main">
-    <section className="dashboard-heading"><div><div className="eyebrow">{copy("A LITTLE CLARITY FOR YOUR NEXT BIG IDEA", "مساحة للأفكار الكبيرة")}</div><h1>{copy("Welcome back", "أهلاً بك")}{firstName ? `, ${firstName}` : ""}<span className="greeting-dot">.</span></h1><p className="muted">{copy("Let’s turn your curiosity into research that makes a difference.", "لنواصل تحويل أفكارك إلى بحث علمي متين.")}</p></div>{can("create_projects")&&<Link className="btn btn-primary" to="/projects/new"><Icon name="plus" size={18} />{t("dash.newProject")}</Link>}</section>
+    <ResearchWelcome name={firstName} project={latestProject} stages={stages} loading={loading} failed={!!error} can={can}/>
+    <ResearchLaunchpad can={can}/>
     <section className="dashboard-stats" aria-label={copy("Project statistics", "إحصائيات المشاريع")}>
      {[
       {icon: "book" as const, label: copy("Total projects", "جميع المشاريع"), value: projects.length, hint: copy("Your ideas, all in one place", "أفكارك في مكان واحد")},

@@ -104,14 +104,16 @@ def test_editing_source_marks_proposal_stale_and_blocks_resume_and_copy(monkeypa
     assert changed['rewrite']['stale']
     for suffix in ('next','copy'):
         assert client.post(root+'/rewrite/'+suffix,headers=h,json={'version':changed['version']}).status_code==409
+    assert client.post(root+'/rewrite/merge',headers=h,json={'version':changed['version'],'choices':[{'section_id':1,'mode':'enhanced'},{'section_id':2,'mode':'enhanced'}]}).status_code==409
 
 
 def test_ownership_and_optimistic_version_are_enforced(monkeypatch):
     h,root,original,current=begin(monkeypatch)
     other=auth('rewrite-other@example.com')
-    for suffix in ('start','next','copy'):
-        assert client.post(root+'/rewrite/'+suffix,headers=other,json={'version':current['version']}).status_code==403
-        assert client.post(root+'/rewrite/'+suffix,headers=h,json={'version':original['version']}).status_code==409
+    for suffix in ('start','next','copy','merge'):
+        body={'choices':[{'section_id':1,'mode':'enhanced'}]} if suffix=='merge' else {}
+        assert client.post(root+'/rewrite/'+suffix,headers=other,json={'version':current['version'],**body}).status_code==403
+        assert client.post(root+'/rewrite/'+suffix,headers=h,json={'version':original['version'],**body}).status_code==409
 
 
 @pytest.mark.asyncio
@@ -133,3 +135,65 @@ def test_invalid_section_result_is_atomic_and_old_proposal_is_retained(monkeypat
     new=client.post(root+'/rewrite/start',headers=h,json={'version':current['version'],'instruction':'A new plan.'}).json()
     assert new['previous_rewrite']['title']==current['rewrite']['title']
     assert new['sections']==current['sections']
+
+
+@pytest.mark.asyncio
+async def test_all_discussions_and_source_snapshot_are_fixed_for_generation(monkeypatch):
+    state=ai.build_state(['An original scientific argument. '*12],'en')
+    state['paper_chat']={'messages':[{'role':'user','content':f'Correction {i}'} for i in range(15)]}
+    state['sections'][0]['messages']=[{'role':'user','content':'Preserve the conceptual design.'}]
+    seen=[]
+    async def capture(system,payload,json_output=False):
+        seen.append(deepcopy(payload));return await fixture_ai(system,payload,json_output)
+    monkeypatch.setattr(ai,'ai_call',capture)
+    await rewrite.start(state,'en','conceptual_legal','original','Clarify scope.')
+    snapshot=deepcopy(state['rewrite']['source_snapshot'])
+    state['paper_chat']['messages'].append({'role':'user','content':'Later decision.'})
+    await rewrite.advance(state,'en')
+    for payload in seen:
+        discussions=payload['saved_review']['discussion']
+        assert len(discussions['paper_messages'])==15
+        assert discussions['section_messages'][0]['messages'][0]['content']=='Preserve the conceptual design.'
+    assert state['rewrite']['source_snapshot']==snapshot
+    state['paper_chat']['messages']=[{'content':'x'*rewrite.MAX_DISCUSSION}]
+    previous=deepcopy(state['rewrite'])
+    with pytest.raises(HTTPException) as exc:await rewrite.start(state,'en','general','original','')
+    assert 'REWRITE_DISCUSSION_TOO_LONG' in exc.value.detail
+    assert state['rewrite']==previous
+
+
+def test_merge_preserves_original_supports_choices_and_reuses_copy(monkeypatch):
+    h,root,original,current=begin(monkeypatch)
+    choices=[{'section_id':1,'mode':'custom','text':'Researcher selected and merged wording.'}, {'section_id':2,'mode':'omit'}]
+    assert client.post(root+'/rewrite/merge',headers=h,json={'version':current['version'],'choices':choices}).status_code==409
+    current=advance(h,root,current);current=advance(h,root,current)
+    response=client.post(root+'/rewrite/merge',headers=h,json={'version':current['version'],'choices':choices})
+    assert response.status_code==200,response.text
+    merged=response.json()
+    assert merged['id']!=original['id'] and merged['origin_review_id']==original['id']
+    assert len(merged['sections'])==1 and merged['sections'][0]['original'].endswith(choices[0]['text'])
+    assert merged['merge_choices']==[{**item,'text':item.get('text','')} for item in choices]
+    saved=client.get(root,headers=h).json()
+    assert saved['sections']==original['sections']
+    repeated=client.post(root+'/rewrite/merge',headers=h,json={'version':saved['version'],'choices':list(reversed(choices))})
+    assert repeated.json()['id']==merged['id']
+    choices[0]={'section_id':1,'mode':'source'}
+    copied=client.post(root+'/rewrite/merge',headers=h,json={'version':saved['version'],'choices':choices}).json()
+    expected='\n\n'.join(item['text'] for item in current['rewrite']['source_snapshot'])
+    assert copied['sections'][0]['original'].endswith(expected)
+
+
+@pytest.mark.parametrize('choices',[
+    [{'section_id':1,'mode':'enhanced'}],
+    [{'section_id':1,'mode':'enhanced'},{'section_id':1,'mode':'enhanced'}],
+    [{'section_id':999,'mode':'enhanced'},{'section_id':2,'mode':'enhanced'}],
+    [{'section_id':1,'mode':'omit'},{'section_id':2,'mode':'enhanced'}],
+    [{'section_id':1,'mode':'custom','text':'  '},{'section_id':2,'mode':'enhanced'}],
+    [{'section_id':1,'mode':'enhanced'},{'section_id':2,'mode':'source'}],
+])
+def test_merge_rejects_invalid_choices_atomically(monkeypatch,choices):
+    h,root,_,current=begin(monkeypatch)
+    current=advance(h,root,current);current=advance(h,root,current)
+    failed=client.post(root+'/rewrite/merge',headers=h,json={'version':current['version'],'choices':choices})
+    assert failed.status_code==422,failed.text
+    assert client.get(root,headers=h).json()['version']==current['version']

@@ -2546,6 +2546,19 @@ body.ui-ar .project-card-footer svg, body.ui-ar .sidebar-note a svg { transform:
 .rewrite-comparison h4 { color:#436957; margin:0 0 15px; }
 .rewrite-comparison details { margin:12px 0; }
 .rewrite-text { white-space:pre-wrap; line-height:2; padding:22px; background:#f4f9f5; border:1px solid #d9e7dd; border-radius:12px; overflow-wrap:anywhere; }
+.revision-studio { border-top:1px solid var(--border); margin-top:28px; padding-top:24px; }
+.revision-legend { display:flex; align-items:center; flex-wrap:wrap; gap:18px; margin:18px 0; }
+.revision-legend label,.revision-hunk label { display:flex; align-items:center; gap:8px; cursor:pointer; }
+.revision-removed { background:#ffe5e5; color:#852a2a; text-decoration:line-through; }
+.revision-added { background:#d8f4e3; color:#145c37; text-decoration:underline; text-decoration-style:dotted; }
+.revision-legend>span { padding:4px 9px; border-radius:5px; }
+.revision-reader { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.95; padding:20px; border:1px solid var(--border); border-radius:12px; max-height:640px; overflow:auto; background:var(--bg-card,#fff); }
+.revision-studio .btn[aria-pressed="true"] { background:#e4f3eb; border-color:#75ab94; color:#175b43; }
+.revision-hunks { margin:22px 0; }
+.revision-hunks summary { cursor:pointer; font-weight:600; }
+.revision-hunk { margin:12px 0; padding:14px; border:1px solid var(--border); border-radius:8px; white-space:pre-wrap; overflow-wrap:anywhere; max-height:360px; overflow:auto; }
+.revision-hunk>div { margin-top:10px; }
+.revision-studio textarea { min-height:300px; line-height:1.9; }
 @media(max-width:1000px) { .rewrite-comparison { grid-template-columns:1fr; } }
 @media(max-width:760px) { .rewrite-settings .assessment-settings { grid-template-columns:1fr; } }
 

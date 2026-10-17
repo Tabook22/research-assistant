@@ -30,6 +30,14 @@ class ComplianceStart(AnalyzeRequest):
 class RewriteStart(ComplianceStart):
     instruction: str = Field(default="", max_length=6000)
 
+class RewriteChoice(BaseModel):
+    section_id: int = Field(ge=1)
+    mode: Literal['source', 'enhanced', 'custom', 'omit']
+    text: str = Field(default='', max_length=80000)
+
+class RewriteMerge(AnalyzeRequest):
+    choices: list[RewriteChoice] = Field(min_length=1, max_length=30)
+
 class PaperChatRequest(Action):
     section_id: int | None = Field(default=None, ge=1)
     search_id: str | None = Field(default=None, max_length=40)

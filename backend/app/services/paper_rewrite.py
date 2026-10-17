@@ -1,5 +1,6 @@
 """Checkpointed whole-paper proposals; originals and working drafts are never overwritten."""
 from datetime import datetime, timezone
+from copy import deepcopy
 import json
 from pydantic import BaseModel, ConfigDict, Field
 from fastapi import HTTPException
@@ -7,6 +8,14 @@ from app.services import paper_review_service as ai, scientific_assessment as as
 
 MAX_SOURCE = 110000
 MAX_PROPOSAL = 105000
+MAX_DISCUSSION = 80000
+
+
+def discussion(state):
+    """Include every saved conversation; never silently discard earlier decisions."""
+    return deepcopy({'paper_messages': state.get('paper_chat', {}).get('messages', []),
+            'section_messages': [{'section_id': s['id'], 'messages': s.get('messages', [])}
+                                 for s in state['sections'] if s.get('messages')]})
 
 
 class PlannedSection(BaseModel):
@@ -66,9 +75,14 @@ async def start(state, language, paper_type, basis, instruction):
         raise HTTPException(413, 'REWRITE_TOO_LONG: Whole-paper rewriting supports up to 110,000 source characters. Previous proposals are preserved.')
     rubric = scientific_rubric.rubric(paper_type)
     report = state.get('compliance')
-    context = {'overview': state.get('overview'), 'criteria': report if report and not assessment.stale(state, report) and report['basis'] == basis and report['paper_type'] == paper_type else None}
+    conversations = discussion(state)
+    if len(json.dumps(conversations, ensure_ascii=False)) > MAX_DISCUSSION:
+        raise HTTPException(413, 'REWRITE_DISCUSSION_TOO_LONG: Saved discussions exceed 80,000 characters. Previous proposals are preserved. Consolidate decisions into revision priorities and use a separate paper copy.')
+    context = {'overview': state.get('overview'), 'discussion': conversations,
+               'section_findings': [{'section_id': s['id'], 'analysis': s.get('analysis')} for s in state['sections']],
+               'criteria': report if report and not assessment.stale(state, report) and report['basis'] == basis and report['paper_type'] == paper_type else None}
     raw = await ai.ai_call(ai.instructions(language) + RULES, {
-        'task': 'Plan a coherent improved version of the ENTIRE paper. Define the proposed title, a detailed provisional research problem, revision approach and ordered manuscript sections. Each section maps to source_section_ids; use [] for a genuinely new addition needing placeholders. Every supplied source section ID must be covered at least once, including references and front matter. Do not drop uncomfortable limitations or findings. Distinguish textual repairs from requirements needing author evidence or decisions. Keep the plan concise and appropriate to the paper type.',
+        'task': 'Plan a coherent improved version of the ENTIRE paper. Incorporate researcher corrections, decisions and proposed innovations from ALL supplied discussions; assistant suggestions are provisional, not approved facts. Resolve conflicting directions using explicit revision priorities, otherwise flag the conflict for the researcher. Define the proposed title, a detailed provisional research problem, revision approach and ordered manuscript sections. Each section maps to source_section_ids; use [] for a genuinely new addition needing placeholders. Every supplied source section ID must be covered at least once, including references and front matter. Do not drop uncomfortable limitations or findings. Distinguish textual repairs from requirements needing author evidence or decisions. Keep the plan concise and appropriate to the paper type.',
         'schema': Plan.model_json_schema(), 'paper_type': paper_type, 'researcher_goal': instruction,
         'manuscript': manuscript, 'saved_review': context, 'criteria_guide': rubric,
     }, True)
@@ -81,7 +95,7 @@ async def start(state, language, paper_type, basis, instruction):
         state['previous_rewrite'] = state['rewrite']
     state['rewrite'] = {**plan.model_dump(), 'paper_type': paper_type, 'basis': basis, 'instruction': instruction,
                         'fingerprint': assessment.fingerprint(state, basis), 'created_at': now(), 'updated_at': now(),
-                        'context': context, 'complete': False,
+                        'context': context, 'source_snapshot': manuscript, 'complete': False,
                         'sections': [{**section.model_dump(), 'id': i + 1, 'result': None} for i, section in enumerate(plan.sections)]}
     return state
 
@@ -103,7 +117,7 @@ async def advance(state, language):
         'outline': [{k: v for k, v in s.items() if k != 'result'} for s in proposal['sections']],
         'selected_section': {k: v for k, v in pending.items() if k != 'result'},
         'previous_section_changes': [{'title': s['title'], 'changes': s['result']['changes']} for s in proposal['sections'] if s['result']],
-        'manuscript': source(state, proposal['basis']), 'saved_review': proposal['context'],
+        'manuscript': proposal.get('source_snapshot') or source(state, proposal['basis']), 'saved_review': proposal['context'],
         'criteria_guide': scientific_rubric.rubric(proposal['paper_type']),
     }, True)
     result = parse(raw, SectionProposal)
@@ -115,23 +129,51 @@ async def advance(state, language):
     return state
 
 
-def copy_state(state, language):
+def copy_state(state, language, choices=None):
     proposal = state.get('rewrite')
     if not proposal or not proposal['complete']:
         raise HTTPException(409, 'Complete the proposal before opening an independent working copy.')
     if stale(state, proposal):
         raise HTTPException(409, 'REWRITE_STALE: The proposal refers to older source text. Regenerate before creating a copy.')
     # Keep the proposed outline intact; do not run original-paper heading heuristics on AI text.
-    texts = [(proposal['title'] + '\n\n' if i == 0 else '') + section['result']['text'] for i, section in enumerate(proposal['sections'])]
+    sections = proposal['sections']
+    if choices is not None:
+        selected = {item.section_id: item for item in choices}
+        if len(selected) != len(choices) or set(selected) != {s['id'] for s in sections}:
+            raise HTTPException(422, 'Choose exactly once for every proposed section.')
+        snapshots = {s['id']: s for s in proposal.get('source_snapshot') or source(state, proposal['basis'])}
+        merged = []
+        for section in sections:
+            choice = selected[section['id']]
+            if choice.mode == 'omit':
+                if section['source_section_ids']:
+                    raise HTTPException(422, 'Only new proposed sections may be omitted. Use custom text to merge source sections.')
+                continue
+            text = section['result']['text']
+            if choice.mode == 'source':
+                if not section['source_section_ids']:
+                    raise HTTPException(422, 'A new proposed section has no source text. Choose omit instead.')
+                text = '\n\n'.join(snapshots[ident]['text'] for ident in section['source_section_ids'])
+            elif choice.mode == 'custom':
+                text = choice.text
+            if not text.strip():
+                raise HTTPException(422, 'Selected manuscript sections must contain text.')
+            merged.append({**section, 'result': {**section['result'], 'text': text}})
+        sections = merged
+    texts = [(proposal['title'] + '\n\n' if i == 0 else '') + section['result']['text'] for i, section in enumerate(sections)]
+    if sum(map(len, texts)) > MAX_PROPOSAL:
+        raise HTTPException(413, 'REWRITE_TOO_LONG: The merged copy exceeds 105,000 characters.')
     copied = {'overview': None, 'analysis_mode': 'structure_only', 'warnings': [],
-              'page_count': len(proposal['sections']), 'coverage_note': '', 'revision_notice': '',
+              'page_count': len(sections), 'coverage_note': '', 'revision_notice': '',
               'character_count': sum(len(text) for text in texts)}
     copied['sections'] = [{'id': s['id'], 'title': s['title'], 'page_start': i + 1, 'page_end': i + 1,
                            'original': texts[i], 'draft': None, 'analysis': None,
-                           'proposed_text': None, 'revisions': [], 'messages': []} for i, s in enumerate(proposal['sections'])]
-    copied['source_pages'] = [{'number': i + 1, 'text': texts[i]} for i, s in enumerate(proposal['sections'])]
+                           'proposed_text': None, 'revisions': [], 'messages': []} for i, s in enumerate(sections)]
+    copied['source_pages'] = [{'number': i + 1, 'text': texts[i]} for i, s in enumerate(sections)]
     copied['source_format'] = 'txt'
     copied['suggested_paper_type'] = proposal['paper_type']
     copied['warnings'].insert(0, 'AI-generated working proposal: verify every claim, reference and unresolved placeholder. Text units are proposed sections, not original PDF pages.' if language == 'en' else 'مسودة مقترحة مولدة بالذكاء الاصطناعي: راجع كل ادعاء ومرجع وموضع يحتاج إلى استكمال. الوحدات النصية أجزاء مقترحة وليست صفحات PDF الأصلية.')
     copied['proposal_needs_input'] = list(dict.fromkeys(proposal['requirements_needing_input'] + [item for s in proposal['sections'] for item in s['result']['needs_input']]))
+    if choices is not None:
+        copied['merge_choices'] = [item.model_dump() for item in choices]
     return copied

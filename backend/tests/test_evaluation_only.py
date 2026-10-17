@@ -70,7 +70,7 @@ def test_evaluation_user_can_upload_analyze_assess_and_read_but_cannot_write_or_
     assert next_step.status_code==200;current=next_step.json()
     assert current['compliance']['counts']['partial']==3
     assert client.get(root+'/file',headers=h).status_code==200
-    for suffix in (f'sections/{sid}/discuss',f'sections/{sid}/suggest','rewrite/start','rewrite/next','rewrite/copy'):
+    for suffix in (f'sections/{sid}/discuss',f'sections/{sid}/suggest','rewrite/start','rewrite/next','rewrite/copy','rewrite/merge'):
         response=client.post(root+'/'+suffix,headers=h,json={'version':current['version'],'instruction':'Attempt forbidden operation.'})
         assert response.status_code==403,(suffix,response.text)
     assert client.patch(root+f'/sections/{sid}/draft',headers=h,json={'version':current['version'],'text':'Forbidden edit.'}).status_code==403

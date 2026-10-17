@@ -121,6 +121,7 @@ export function useSpeechToText(options: {
     if (rec) {
       try {
         rec.onend = null;
+        rec.onstart = null;
         rec.onresult = null;
         rec.onerror = null;
         rec.abort();
@@ -173,6 +174,10 @@ export function useSpeechToText(options: {
         const code = (ev as { error?: string }).error || "unknown";
         if (code === "aborted") return;
         if (code === "no-speech") return;
+        // Terminal failures must not repeatedly reopen the microphone.
+        wantListenRef.current = false;
+        clearTimers();
+        setListening(false);
         if (code === "not-allowed") {
           setError("Microphone permission denied. Allow the mic in your browser settings.");
           wantListenRef.current = false;
@@ -260,6 +265,7 @@ export function useSpeechToText(options: {
       };
 
       recognitionRef.current = recognition;
+      setListening(true);
       try {
         recognition.start();
       } catch {
@@ -268,15 +274,19 @@ export function useSpeechToText(options: {
         setListening(false);
       }
     },
-    [abortRecognition]
+    [abortRecognition, clearTimers]
   );
 
   const stop = useCallback(() => {
     wantListenRef.current = false;
     clearTimers();
-    abortRecognition();
-    setListening(false);
-    setInterim("");
+    // stop() allows the engine to deliver its final words before onend.
+    // abort() is reserved for unmount/language changes, when results must be discarded.
+    const recognition = recognitionRef.current;
+    if (recognition) {
+      try { recognition.stop(); }
+      catch { abortRecognition(); setListening(false); setInterim(""); }
+    } else { setListening(false); setInterim(""); }
   }, [abortRecognition, clearTimers]);
 
   const start = useCallback(() => {

@@ -135,6 +135,14 @@ After generation, **Create independent copy & reassess** creates a separate priv
 
 Rewriting cannot supply missing empirical data, real findings, verified citations or ethics approvals. Prompts require explicit inline input/verification placeholders and prohibit invented evidence, references or guarantees of publication or complete scientific compliance. Generated statements still require human verification. Failed or invalid requests retain completed checkpoints and previous proposals. The feature uses the existing project ownership and paper-review permissions.
 
+### Discussion-based regeneration and interactive merging
+
+Choose **Regenerate & compare paper** in Paper review. Generation includes every saved paper conversation and section discussion, section findings and applicable saved criteria, with explicit revision priorities taking precedence over conflicting discussion directions. Assistant suggestions remain provisional. The discussion snapshot is fixed when generation starts; later messages are included on the next regeneration. Discussions above 80,000 serialized characters are rejected before replacing an existing proposal, without silently truncating earlier decisions.
+
+The comparison uses saved source text from generation time and highlights additions and removals in parallel readers. Select a proposed section to inspect its rationale and unresolved inputs. Keep its source wording, accept its enhanced wording, omit a newly proposed section, or select individual changes and edit the merged text. With a working-copy basis, the left pane shows that saved working text rather than the uploaded original. Long sections use bounded word comparison with unique-word anchors; fully rewritten passages may appear as whole replacements.
+
+**Create merged copy** validates every section choice and saves an independent manuscript with its origin and selections, leaving the uploaded paper and existing drafts intact. Identical selections reopen the same copy, preserving later edits. Unchosen sections use enhanced wording. Comparison choices remain local and unsaved until copy creation; individual-change controls rebuild the section and replace manual edits. Incomplete or stale proposals cannot create copies. The existing full-enhanced-copy action and export remain available. Evaluation-only users cannot generate or merge revisions.
+
 ## Permanent credentials and upload/evaluation-only users
 
 Administrator-created accounts use permanent passwords by default: no first-login password change is required. The administration form includes an optional **Require password change at sign-in** checkbox. The same flag can be changed for an existing user without changing their password. Administrator password resets also default to permanent unless the flag is explicitly enabled. Existing account policies are preserved until an administrator changes them; password/permission changes continue to revoke old sessions.
@@ -157,11 +165,17 @@ Internet discovery is an explicit, separate action: an assistant may propose edi
 
 Evaluation-only users can discuss their own papers and approve these bounded academic searches; section editing, whole-paper rewriting and other workspace tools retain their existing permission checks.
 
+Paper companion voice input uses the existing Arabic/English browser speech recognition controls in the question composer. Dictate, stop, review or edit the transcript, then send explicitly; sending is disabled during capture. Final recognition results are retained after stopping, the 6,000-character question limit applies to dictation, and switching sessions or closing the composer aborts capture. Permission/service errors and unsupported browsers keep manual typing available. Recognition depends on browser support and microphone permission and may use the browser provider's online speech service; the application does not save an audio recording. Automated tests use simulated recognition events; live microphone transcription quality requires checking on the target browser/device.
+
 ## Visual paper review
 
 The paper review page opens a read-only visual studio, including for evaluation-only accounts. Saved-paper cards, a section outline and constructive passage notes connect feedback to server-verified excerpts of the extracted original. Notes distinguish strengths, improvements and verification needs. Suggested passage wording is compared with the original using a whitespace-preserving word diff; proposals never update source text or drafts.
 
 Start passage review explicitly to use the configured analysis model. Each section is persisted independently; pausing finishes the current request and continuation skips saved sections. A section can be refreshed separately. Unmatched model quotes never become source highlights or replacement comparisons. PDF page links appear only when the excerpt also matches an extracted source page; highlights are in the extracted-text reader, not overlaid on PDF pixels. Viewed-note checkboxes are session-only reading aids, not completion or compliance scores. Full-access users can switch back to discussion and editing tools.
+
+## Member workspace and paper collection
+
+The member dashboard includes a personalized welcome with a resume link to the most recently updated project and its saved stage/progress. A permission-aware task launcher opens literature discovery, paper review or project creation. The paper collection (`/papers`) includes illustrated document cards, title/project search, kind filters with counts, title/project sorting, recoverable empty/error states and grid/list layouts. Layout preference is stored locally; papers and permissions continue to come from the existing API. New layouts support Arabic/right-to-left text, smaller screens, keyboard focus and reduced motion. Progress reflects saved project completion, not scientific certification.
 
 ## Core workflows
 

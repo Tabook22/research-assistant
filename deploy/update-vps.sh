@@ -21,6 +21,7 @@ cd "$SOURCE/frontend"
 npm ci --no-audit --no-fund
 VITE_BASE_PATH=/reguide/ VITE_API_BASE=/reguide/api npm run build
 node --test .verification/*.test.cjs
+npm test
 
 STAMP="$(date -u +%Y%m%d-%H%M%S)-${REVISION:0:8}"
 BACKUP="$APP/deploy/backups/$STAMP"

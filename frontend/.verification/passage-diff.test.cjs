@@ -15,5 +15,8 @@ test('unchanged, empty and long passages reconstruct both versions',()=>{
  assert.equal(verify('No change','No change')[0].kind,'equal');
  verify('','New text');verify('Removed','');verify('','');
  const parts=verify('word '.repeat(600),'changed '.repeat(600));
- assert.equal(parts.length,2);
+ assert(parts.some(p=>p.kind==='remove'&&p.text.includes('word')));
+ assert(parts.some(p=>p.kind==='add'&&p.text.includes('changed')));
+ // The scalable comparison preserves matching boundary whitespace.
+ assert(parts.filter(p=>p.kind==='equal').every(p=>!p.text.trim()));
 });
