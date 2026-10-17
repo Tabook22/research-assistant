@@ -59,7 +59,7 @@ async def exchange(profile, method, path, *, body=None, params=None):
         raise HTTPException(502, 'AI_RESPONSE: Provider returned invalid JSON.') from None
 
 
-async def complete(profile, messages, json_output=False, max_tokens=None):
+async def complete(profile, messages, json_output=False, max_tokens=None, response_schema=None):
     if not profile.key:
         raise HTTPException(503, 'AI assistance is not configured. Ask the administrator to configure the task profile.')
     messages = [dict(message) for message in messages]
@@ -70,8 +70,16 @@ async def complete(profile, messages, json_output=False, max_tokens=None):
     if protocol == 'responses':
         body = {'model': profile.model, 'input': messages, 'max_output_tokens': limit, 'store': False}
         if json_output:
-            body['text'] = {'format': {'type': 'json_object'}}
+            body['text'] = {'format': ({'type':'json_schema', 'name':'scientific_presentation',
+                                       'strict':True, 'schema':response_schema}
+                                      if response_schema is not None else {'type':'json_object'})}
         data = await exchange(profile, 'POST', '/responses', body=body)
+        if data.get('status') == 'incomplete' and (data.get('incomplete_details') or {}).get('reason') == 'max_output_tokens':
+            logger.warning('AI response incomplete: category=AI_OUTPUT_LIMIT')
+            raise HTTPException(502, 'AI_OUTPUT_LIMIT: Provider output budget exhausted. Increase the analysis output token limit or use fewer slides. Saved work is preserved.')
+        if any(part.get('type') == 'refusal' for item in data.get('output', [])
+               for part in item.get('content', [])):
+            raise HTTPException(502, 'AI_REFUSAL: The provider declined this request. Review the requested scope; saved work is preserved.')
         text = ''.join(part.get('text', '') for item in data.get('output', []) if item.get('type') == 'message'
                        for part in item.get('content', []) if part.get('type') == 'output_text')
         finished = data.get('status') == 'completed'
@@ -103,7 +111,8 @@ class TaskClient:
         self.chat = SimpleNamespace(completions=self)
 
     async def create(self, *, messages, response_format=None, **_):
-        text = await complete(self.profile, messages, bool(response_format))
+        schema = response_format.get('json_schema', {}).get('schema') if response_format and response_format.get('type') == 'json_schema' else None
+        text = await complete(self.profile, messages, bool(response_format), response_schema=schema)
         return SimpleNamespace(model=self.profile.model, choices=[SimpleNamespace(message=SimpleNamespace(content=text), finish_reason='stop')])
 
 

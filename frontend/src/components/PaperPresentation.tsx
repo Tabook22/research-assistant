@@ -2,7 +2,7 @@ import {useEffect,useRef,useState} from 'react';
 import {sourceBlob} from '../api';
 import {paperReviewApi,type PaperReview,type PaperPresentation as Deck,type SlideTheme,type SourceLocation} from '../paperReviewApi';
 import {useI18n} from '../i18n/I18nContext';
-import {aiProviderFailure} from '../lib/aiProviderFailure';
+import {presentationFailure} from '../lib/presentationFailure';
 import {slideThemes,renderSlide,exportPowerPoint} from '../lib/presentationDesign';
 import Icon from './Icon';
 import AssistantActivity from './AssistantActivity';
@@ -41,7 +41,7 @@ export default function PaperPresentation({token,project,review,disabled,onUpdat
    }else if(action==='export'&&deck){
     const urls:Record<number,string>={};try{if(useImages)for(const s of deck.slides.filter(s=>s.image_ready)){urls[s.id]=URL.createObjectURL(await sourceBlob(imagePath(deck,s.id),token));}await exportPowerPoint(useImages?deck:{...deck,slides:deck.slides.map(s=>({...s,image_ready:false}))},theme,urls);if(alive.current)setNotice(c('Your editable PowerPoint file is ready in Downloads.','ملف PowerPoint القابل للتحرير جاهز في التنزيلات.'));}finally{Object.values(urls).forEach(url=>URL.revokeObjectURL(url));}
    }
-  }catch(e){if(alive.current){const text=(e as Error).message||'';setError(aiProviderFailure(text,c)??(text.includes('SLIDES_IMAGES_CONFIG')?c('Ask the administrator to configure the Images profile in AI settings. Illustrations and PowerPoint export remain available.','اطلب من المسؤول تهيئة إعداد «صور العروض التقديمية» في إعدادات الذكاء الاصطناعي. يمكن استخدام الرسوم التوضيحية وتصدير PowerPoint.'):text.includes('changed')||text.includes('SLIDES_STALE')?c('The paper changed. Reload before continuing. Saved slides remain available.','تغيّرت الورقة. أعد التحميل قبل المتابعة. الشرائح المحفوظة باقية.'):text.includes('not configured')?c('Ask the administrator to configure the analysis model.','اطلب من المسؤول تهيئة موديل التحليل.'):c('This step could not finish. Saved slides are preserved. Check the settings, then continue.','تعذر إكمال هذه الخطوة. الشرائح المحفوظة باقية. تحقق من الإعدادات ثم تابع.')));}}
+  }catch(e){if(alive.current){const text=(e as Error).message||'';setError(presentationFailure(text,c,!!deck));}}
   finally{if(alive.current)setTask('');onBusy(false);}
  }
  return <details className="presentation-studio"><summary><span className="presentation-symbol"><Icon name="presentation" size={30}/></span><span><strong>{c('Turn your paper into a presentation','حوّل ورقتك إلى عرض تقديمي')}</strong><small>{c('A considered narrative. Editable PowerPoint. Illustrations made for your topic.','قصة علمية واضحة، وشرائح قابلة للتحرير، وصور تناسب موضوعك.')}</small></span><span className="presentation-limit">{c('Up to 20 slides','حتى ٢٠ شريحة')}</span><Icon name="chevron" size={20}/></summary>

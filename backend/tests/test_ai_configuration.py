@@ -131,6 +131,29 @@ async def test_incomplete_response_is_not_saved_or_silently_rerouted(monkeypatch
     assert exc.value.status_code==502 and seen==['xai']
 
 
+@pytest.mark.asyncio
+async def test_presentation_schema_reaches_native_responses_endpoint(monkeypatch):
+    schema={'type':'object','properties':{'title':{'type':'string'}},'required':['title'],'additionalProperties':False}
+    async def fake(profile,method,path,**kwargs):
+        assert path=='/responses'
+        assert kwargs['body']['text']['format']=={'type':'json_schema','name':'scientific_presentation','strict':True,'schema':schema}
+        assert kwargs['body']['store'] is False
+        return {'status':'completed','output':[{'type':'message','content':[{'type':'output_text','text':'{"title":"Synthetic outline"}'}]}]}
+    monkeypatch.setattr(gateway,'exchange',fake)
+    profile=config.Profile('analysis','openai','synthetic-model',KEY,base_url=config.PROVIDERS['openai']['base_url'])
+    result=await gateway.TaskClient(profile).create(messages=[{'role':'user','content':'Synthetic task'}],response_format={'type':'json_schema','json_schema':{'schema':schema,'strict':True}})
+    assert json.loads(result.choices[0].message.content)['title']=='Synthetic outline'
+
+
+@pytest.mark.asyncio
+async def test_exhausted_response_budget_has_actionable_error(monkeypatch):
+    async def fake(*args,**kwargs):return {'status':'incomplete','incomplete_details':{'reason':'max_output_tokens'},'output':[]}
+    monkeypatch.setattr(gateway,'exchange',fake)
+    profile=config.Profile('analysis','openai','synthetic-model',KEY,base_url=config.PROVIDERS['openai']['base_url'])
+    with pytest.raises(HTTPException) as exc:await gateway.complete(profile,[{'role':'user','content':'Synthetic task'}],True)
+    assert exc.value.detail.startswith('AI_OUTPUT_LIMIT:')
+
+
 def test_discovery_and_synthetic_test_do_not_save_unsaved_credentials(monkeypatch):
     headers,_=admin();seen=[]
     async def fake(profile, method, path, **kwargs):

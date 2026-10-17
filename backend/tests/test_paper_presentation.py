@@ -55,7 +55,7 @@ def test_routes_limits_scope_and_resume_preserve_saved_slides(monkeypatch):
         assert client.post(root+'/presentation/start',headers=h,json={'version':row['version'],**data}).status_code==422
     state=client.post(root+'/presentation/start',headers=h,json={'version':row['version'],'count':5}).json()
     state=client.post(root+'/presentation/next',headers=h,json={'version':state['version']}).json()
-    assert sum(bool(s['content']) for s in state['presentation']['slides'])==2
+    assert sum(bool(s['content']) for s in state['presentation']['slides'])==1
     saved=deepcopy(state)
     async def fail(*args,**kwargs):raise HTTPException(429,'AI_CREDIT_BALANCE: Exhausted')
     monkeypatch.setattr(ai,'ai_call',fail)
@@ -65,7 +65,7 @@ def test_routes_limits_scope_and_resume_preserve_saved_slides(monkeypatch):
     fixture_ai(monkeypatch)
     assert client.post(root+'/presentation/next',headers=h,json={'version':row['version']}).status_code==409
     state=client.post(root+'/presentation/next',headers=h,json={'version':state['version']}).json()
-    assert state['presentation']['slides'][:2]==saved['presentation']['slides'][:2]
+    assert state['presentation']['slides'][:1]==saved['presentation']['slides'][:1]
     next_set=client.post(root+'/presentation/start',headers=h,json={'version':state['version'],'count':3}).json()
     assert next_set['previous_presentation']['slides']==state['presentation']['slides']
     other=auth('slides-'+uuid4().hex+'@example.com')

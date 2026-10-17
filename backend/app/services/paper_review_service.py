@@ -107,7 +107,10 @@ async def ai_call(system: str, payload: dict, json_output: bool = False) -> str:
     client = task_client(purpose)
     if client is None:
         raise HTTPException(503, "AI assistance is not configured. Ask the administrator to configure AI settings.")
-    response = await client.chat.completions.create(messages=[{"role":"system","content":system},{"role":"user","content":json.dumps(payload,ensure_ascii=False)}],response_format={"type":"json_object"} if json_output else None)
+    response_format = {"type":"json_object"} if json_output else None
+    if json_output and payload.get('structured_presentation') and payload.get('schema'):
+        response_format = {'type':'json_schema', 'json_schema':{'name':'scientific_presentation', 'strict':True, 'schema':payload['schema']}}
+    response = await client.chat.completions.create(messages=[{"role":"system","content":system},{"role":"user","content":json.dumps(payload,ensure_ascii=False)}],response_format=response_format)
     return response.choices[0].message.content
 
 

@@ -3,14 +3,18 @@ import base64
 from copy import deepcopy
 from datetime import datetime, timezone
 import json
+import logging
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import uuid4
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from app.config import get_settings
 from app.services import ai_configuration, ai_gateway, paper_review_service as ai, paper_chat
 from app.services.scientific_assessment import fingerprint, location, quote_match
+
+logger = logging.getLogger(__name__)
+SlideBullet = Annotated[str, Field(min_length=1, max_length=120)]
 
 
 class PlanItem(BaseModel):
@@ -29,7 +33,7 @@ class Plan(BaseModel):
 class Content(BaseModel):
     model_config = ConfigDict(extra='forbid')
     id: int
-    bullets: list[str] = Field(min_length=1, max_length=3)
+    bullets: list[SlideBullet] = Field(min_length=1, max_length=3)
     notes: str = Field(min_length=1, max_length=1800)
     image_prompt: str = Field(min_length=10, max_length=1200)
     section_id: int
@@ -81,24 +85,32 @@ def public(state, deck):
 def parse(model, raw):
     try:
         return model.model_validate(json.loads(raw.strip().removeprefix('```json').removesuffix('```').strip()))
-    except (ValueError, TypeError):
-        raise HTTPException(502, 'AI_RESPONSE: Invalid presentation response. Saved slides are preserved.') from None
+    except (ValueError, TypeError) as exc:
+        # Never log response text, validation input, API keys or source quotations.
+        types = sorted({e['type'] for e in exc.errors()}) if hasattr(exc, 'errors') else ['invalid_json']
+        logger.warning('Presentation validation failed: model=%s errors=%s', model.__name__, ','.join(types))
+        raise HTTPException(502, 'SLIDES_FORMAT: The model returned an invalid slide structure. Saved slides are preserved.') from None
 
 
 async def start(state, language, payload):
     passages, coverage = context(state, payload.section_ids)
+    schema = Plan.model_json_schema()
+    schema['properties']['slides'].update(minItems=payload.count, maxItems=payload.count)
     plan = parse(Plan, await ai.ai_call(ai.instructions(language), {
-        'task': 'Prepare a scientific presentation outline from this manuscript. Return only the supplied JSON schema. '
+        'task': 'Prepare a scientific presentation outline from this manuscript. Return a JSON OBJECT matching the schema, NOT the schema itself. '
             'Use exactly count slides INCLUDING title and closing slides. Give each slide a distinct purpose and '
             'short title; cover the research problem, appropriate methodology, supported findings, contribution '
             'and limitations as relevant to this research type. Do not invent experimental results in conceptual '
             'or legal papers. Respect the selected scope and researcher focus. Never invent data or references. '
             'The first slide is the cover; the last is a concise conclusion/discussion invitation. '
-            'Select a suitable visual symbol for each slide, not fabricated numerical charts.',
+            'Select a suitable visual symbol for each slide, not fabricated numerical charts. '
+            'Title maximum 120 characters; each slide title maximum 110 characters; focus maximum 250 characters. '
+            'visual must be exactly one of network, process, library, globe, science, balance.',
         'count': payload.count, 'researcher_title': payload.title, 'researcher_focus': payload.focus,
-        'source_passages': passages, 'coverage': coverage, 'schema': Plan.model_json_schema()}, True))
+        'source_passages': passages, 'coverage': coverage, 'structured_presentation':True, 'schema': schema}, True))
     if not plan.title.strip() or len(plan.slides) != payload.count or any(not s.title.strip() or not s.focus.strip() for s in plan.slides):
-        raise HTTPException(502, 'AI_RESPONSE: Slide count or outline is invalid. Previous presentation is preserved.')
+        logger.warning('Presentation validation failed: model=Plan errors=invalid_count_or_empty_text')
+        raise HTTPException(502, 'SLIDES_PLAN: The model returned the wrong slide count or an empty outline. Previous presentation is preserved.')
     if state.get('presentation'):
         state['previous_presentation'] = state['presentation']
     state['presentation'] = {'id': uuid4().hex, 'title': payload.title.strip() or plan.title, 'count': payload.count,
@@ -111,12 +123,15 @@ async def start(state, language, payload):
 
 async def advance(state):
     deck = current(state)
-    pending = [s for s in deck['slides'] if not s['content']][:2]
+    pending = [s for s in deck['slides'] if not s['content']][:1]
     if not pending:
         return state
     passages, _ = context(state, deck['section_ids'])
+    schema = Batch.model_json_schema()
+    schema['properties']['slides'].update(minItems=len(pending), maxItems=len(pending))
+    schema['$defs']['Content']['properties']['id'] = {'type':'integer', 'enum':[s['id'] for s in pending]}
     batch = parse(Batch, await ai.ai_call(ai.instructions(deck['language']), {
-        'task': 'Write concise scientific presentation slides. Return only the supplied JSON schema. '
+        'task': 'Write concise scientific presentation slides. Return a JSON OBJECT matching the schema, NOT the schema itself. '
             'Return exactly the requested slide IDs. Use 1-3 short bullets per slide, each at most 120 characters. '
             'Aim for one idea per bullet and ample visual space. Put explanations, caveats and source context '
             'in speaker notes, not dense slide paragraphs. Titles and research scope are already approved. '
@@ -127,15 +142,16 @@ async def advance(state):
         'presentation_title': deck['title'], 'researcher_focus': deck['focus'],
         'requested_slides': [{k:v for k,v in s.items() if k!='content'} for s in pending],
         'outline': [{'id':s['id'], 'title':s['title']} for s in deck['slides']],
-        'source_passages': passages, 'coverage': deck['coverage'], 'schema': Batch.model_json_schema()}, True))
+        'source_passages': passages, 'coverage': deck['coverage'], 'structured_presentation':True, 'schema': schema}, True))
     if sorted(s.id for s in batch.slides) != sorted(s['id'] for s in pending):
-        raise HTTPException(502, 'AI_RESPONSE: Incorrect slide IDs. Continue to retry.')
+        raise HTTPException(502, 'SLIDES_FORMAT: Incorrect slide IDs. Continue to retry.')
     results = {}
     for item in batch.slides:
         if any(not text.strip() or len(text)>120 for text in item.bullets) or not item.notes.strip():
-            raise HTTPException(502, 'AI_RESPONSE: Slide text exceeds the readable layout budget.')
+            raise HTTPException(502, 'SLIDES_TEXT: Slide text exceeds the readable layout budget.')
         if not any(p['section_id']==item.section_id and quote_match(p['text'],item.quote) for p in passages):
-            raise HTTPException(502, 'AI_RESPONSE: Slide evidence did not match the supplied manuscript.')
+            logger.warning('Presentation validation failed: model=Content errors=unmatched_evidence')
+            raise HTTPException(502, 'SLIDES_EVIDENCE: Slide evidence did not match the supplied manuscript.')
         section = next(s for s in state['sections'] if s['id']==item.section_id)
         results[item.id] = {**item.model_dump(exclude={'id','section_id','quote'}),
                             'location': location(state,section,item.quote,'original'), 'edited': False}
