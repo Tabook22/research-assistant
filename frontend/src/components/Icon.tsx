@@ -1,4 +1,8 @@
 const paths = {
+ expand: "M8 3H3v5 M16 3h5v5 M21 16v5h-5 M3 16v5h5",
+ minimize: "M3 8h5V3 M21 8h-5V3 M16 21v-5h5 M8 21v-5H3",
+ height: "M12 3v18 M8 7l4-4 4 4 M8 17l4 4 4-4",
+ width: "M3 12h18 M7 8l-4 4 4 4 M17 8l4 4-4 4",
  book: "M4 4h6a3 3 0 0 1 2 3v14a4 4 0 0 0-4-3H4z M20 4h-6a3 3 0 0 0-2 3v14a4 4 0 0 1 4-3h4z",
  grid: "M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z",
  list: "M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01",
