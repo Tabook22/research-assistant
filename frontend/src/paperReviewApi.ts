@@ -13,6 +13,7 @@ export interface ReviewSection {
 }
 export interface PassageNote {id:string;category:'strength'|'improvement'|'verification';severity:'low'|'medium'|'high';title:string;explanation:string;location:SourceLocation|null;replacement:string}
 export interface PaperReview {
+ rewrite_limits?: RewriteLimits;
  id: number; project_id: number; filename: string; language: string; version: number;
  sections: ReviewSection[]; overview: ReviewFinding | null;
  analysis_mode: string; warnings: string[]; coverage_note: string; page_count: number;
@@ -29,6 +30,7 @@ export interface PaperReview {
  paper_chat?: PaperChatHistory;
 }
 export interface PaperChatSession {id:string;number:number;title:string;created_at:string|null;updated_at:string|null;question_count:number;message_count:number;search_count:number;preview:string}
+export interface RewriteLimits {scope:'global'|'project'|'review';target_id:number;mode:'inherit'|'custom'|'unlimited';source_limit:number|null;output_limit:number|null;discussion_limit:number|null}
 export interface PaperChatHistory {messages:PaperChatMessage[];searches:PaperChatSearch[];sessions:PaperChatSession[];last_session_id?:string}
 export interface AcademicChatSource {id:number;title:string;authors:string;year:number|null;doi:string;url:string|null;abstract:string;providers:string[];coverage:'abstract'|'metadata'}
 export interface PaperChatSearch {id:string;session_id?:string;query:string;proposal_id:string;consented_at:string;created_at:string;results:AcademicChatSource[];providers:{provider:string;status:string;count?:number;message?:string}[]}

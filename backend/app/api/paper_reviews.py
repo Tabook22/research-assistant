@@ -10,7 +10,7 @@ import json
 from fastapi.responses import FileResponse
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import update
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, object_session
 from starlette.concurrency import run_in_threadpool
 from app.core.deps import get_current_user
 from app.database import get_db
@@ -19,7 +19,7 @@ from app.models.user import User
 from app.models.paper_review import PaperReview
 from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate, ComplianceStart, RewriteStart, RewriteMerge, PaperChatRequest, PaperChatSearch, ChatSessionCreate, ChatSessionRename
 from app.services import scientific_assessment as assessment
-from app.services import paper_rewrite
+from app.services import paper_rewrite, rewrite_policy
 from app.services import paper_annotations
 from app.services import paper_chat
 from app.services import scientific_rubric
@@ -46,6 +46,7 @@ def result(row):
         state['rewrite'].pop('context',None)
     if state.get('previous_rewrite'):
         state['previous_rewrite'].pop('context',None)
+    state['rewrite_limits']=rewrite_policy.effective(object_session(row),row.project_id,row.id)
     return {"id":row.id,"project_id":row.project_id,"filename":row.filename,"language":row.language,"version":row.version,"updated_at":row.updated_at,**state}
 
 def save(db,row,state,version):
@@ -219,14 +220,14 @@ def original_file(project_id:int,review_id:int,db:Session=Depends(get_db),user:U
 async def start_rewrite(project_id:int,review_id:int,payload:RewriteStart,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
     row=load(db,project_id,review_id,user)
     if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
-    state=await paper_rewrite.start(deepcopy(row.state),row.language,payload.paper_type,payload.basis,payload.instruction)
+    state=await paper_rewrite.start(deepcopy(row.state),row.language,payload.paper_type,payload.basis,payload.instruction,rewrite_policy.effective(db,row.project_id,row.id))
     return save(db,row,state,payload.version)
 
 @router.post('/{review_id}/rewrite/next')
 async def next_rewrite(project_id:int,review_id:int,payload:AnalyzeRequest,db:Session=Depends(get_db),user:User=Depends(get_current_user)):
     row=load(db,project_id,review_id,user)
     if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
-    state=await paper_rewrite.advance(deepcopy(row.state),row.language)
+    state=await paper_rewrite.advance(deepcopy(row.state),row.language,rewrite_policy.effective(db,row.project_id,row.id))
     return save(db,row,state,payload.version)
 
 @router.post('/{review_id}/rewrite/copy')
@@ -234,7 +235,7 @@ def copy_rewrite(project_id:int,review_id:int,payload:AnalyzeRequest,db:Session=
     row=load(db,project_id,review_id,user)
     if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
     state=deepcopy(row.state)
-    copied_state=paper_rewrite.copy_state(state,row.language)
+    copied_state=paper_rewrite.copy_state(state,row.language,limits=rewrite_policy.effective(db,row.project_id,row.id))
     existing=state['rewrite'].get('copy_id')
     if existing:
         copied=load(db,project_id,existing,user)
@@ -253,7 +254,7 @@ def merge_rewrite(project_id:int,review_id:int,payload:RewriteMerge,db:Session=D
     row=load(db,project_id,review_id,user)
     if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
     state=deepcopy(row.state)
-    copied_state=paper_rewrite.copy_state(state,row.language,payload.choices)
+    copied_state=paper_rewrite.copy_state(state,row.language,payload.choices,limits=rewrite_policy.effective(db,row.project_id,row.id))
     key=hashlib.sha256(json.dumps([c.model_dump() for c in sorted(payload.choices,key=lambda c:c.section_id)],sort_keys=True).encode()).hexdigest()
     copies=state['rewrite'].setdefault('merged_copies',{})
     if key in copies:

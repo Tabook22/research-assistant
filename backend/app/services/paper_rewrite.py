@@ -5,6 +5,7 @@ import json
 from pydantic import BaseModel, ConfigDict, Field
 from fastapi import HTTPException
 from app.services import paper_review_service as ai, scientific_assessment as assessment, scientific_rubric
+from app.services.rewrite_policy import DEFAULTS
 
 MAX_SOURCE = 110000
 MAX_PROPOSAL = 105000
@@ -16,6 +17,13 @@ def discussion(state):
     return deepcopy({'paper_messages': state.get('paper_chat', {}).get('messages', []),
             'section_messages': [{'section_id': s['id'], 'messages': s.get('messages', [])}
                                  for s in state['sections'] if s.get('messages')]})
+
+
+def check_size(size, limits, key):
+    ceiling = (limits or DEFAULTS)[key]
+    if ceiling is not None and size > ceiling:
+        code = 'REWRITE_DISCUSSION_TOO_LONG' if key == 'discussion_limit' else 'REWRITE_TOO_LONG'
+        raise HTTPException(413, f'{code}: {key} exceeds the administrator ceiling of {ceiling} characters. Saved work is preserved; ask an administrator to raise the ceiling for this paper.')
 
 
 class PlannedSection(BaseModel):
@@ -69,15 +77,13 @@ def stale(state, proposal):
     return proposal['fingerprint'] != assessment.fingerprint(state, proposal['basis'])
 
 
-async def start(state, language, paper_type, basis, instruction):
+async def start(state, language, paper_type, basis, instruction, limits=None):
     manuscript = source(state, basis)
-    if sum(len(item['text']) for item in manuscript) > MAX_SOURCE:
-        raise HTTPException(413, 'REWRITE_TOO_LONG: Whole-paper rewriting supports up to 110,000 source characters. Previous proposals are preserved.')
+    check_size(sum(len(item['text']) for item in manuscript), limits, 'source_limit')
     rubric = scientific_rubric.rubric(paper_type)
     report = state.get('compliance')
     conversations = discussion(state)
-    if len(json.dumps(conversations, ensure_ascii=False)) > MAX_DISCUSSION:
-        raise HTTPException(413, 'REWRITE_DISCUSSION_TOO_LONG: Saved discussions exceed 80,000 characters. Previous proposals are preserved. Consolidate decisions into revision priorities and use a separate paper copy.')
+    check_size(len(json.dumps(conversations, ensure_ascii=False)), limits, 'discussion_limit')
     context = {'overview': state.get('overview'), 'discussion': conversations,
                'section_findings': [{'section_id': s['id'], 'analysis': s.get('analysis')} for s in state['sections']],
                'criteria': report if report and not assessment.stale(state, report) and report['basis'] == basis and report['paper_type'] == paper_type else None}
@@ -95,17 +101,19 @@ async def start(state, language, paper_type, basis, instruction):
         state['previous_rewrite'] = state['rewrite']
     state['rewrite'] = {**plan.model_dump(), 'paper_type': paper_type, 'basis': basis, 'instruction': instruction,
                         'fingerprint': assessment.fingerprint(state, basis), 'created_at': now(), 'updated_at': now(),
-                        'context': context, 'source_snapshot': manuscript, 'complete': False,
+                        'context': context, 'source_snapshot': manuscript, 'limits_at_start': dict(limits or DEFAULTS), 'complete': False,
                         'sections': [{**section.model_dump(), 'id': i + 1, 'result': None} for i, section in enumerate(plan.sections)]}
     return state
 
 
-async def advance(state, language):
+async def advance(state, language, limits=None):
     proposal = state.get('rewrite')
     if not proposal:
         raise HTTPException(409, 'Start a whole-paper proposal first.')
     if stale(state, proposal):
         raise HTTPException(409, 'REWRITE_STALE: Source text changed. Start a new proposal; original text and drafts are preserved.')
+    check_size(sum(len(item['text']) for item in source(state, proposal['basis'])), limits, 'source_limit')
+    check_size(len(json.dumps(proposal.get('context', {}).get('discussion', {}), ensure_ascii=False)), limits, 'discussion_limit')
     pending = next((s for s in proposal['sections'] if s['result'] is None), None)
     if pending is None:
         return state
@@ -121,15 +129,14 @@ async def advance(state, language):
         'criteria_guide': scientific_rubric.rubric(proposal['paper_type']),
     }, True)
     result = parse(raw, SectionProposal)
-    if sum(len(s['result']['text']) for s in proposal['sections'] if s['result']) + len(result.text) > MAX_PROPOSAL:
-        raise HTTPException(413, 'REWRITE_TOO_LONG: The proposal reached its output size limit. Completed sections are preserved; start a more concise proposal.')
+    check_size(sum(len(s['result']['text']) for s in proposal['sections'] if s['result']) + len(result.text), limits, 'output_limit')
     pending['result'] = result.model_dump()
     proposal['complete'] = all(s['result'] is not None for s in proposal['sections'])
     proposal['updated_at'] = now()
     return state
 
 
-def copy_state(state, language, choices=None):
+def copy_state(state, language, choices=None, limits=None):
     proposal = state.get('rewrite')
     if not proposal or not proposal['complete']:
         raise HTTPException(409, 'Complete the proposal before opening an independent working copy.')
@@ -161,8 +168,7 @@ def copy_state(state, language, choices=None):
             merged.append({**section, 'result': {**section['result'], 'text': text}})
         sections = merged
     texts = [(proposal['title'] + '\n\n' if i == 0 else '') + section['result']['text'] for i, section in enumerate(sections)]
-    if sum(map(len, texts)) > MAX_PROPOSAL:
-        raise HTTPException(413, 'REWRITE_TOO_LONG: The merged copy exceeds 105,000 characters.')
+    check_size(sum(map(len, texts)), limits, 'output_limit')
     copied = {'overview': None, 'analysis_mode': 'structure_only', 'warnings': [],
               'page_count': len(sections), 'coverage_note': '', 'revision_notice': '',
               'character_count': sum(len(text) for text in texts)}

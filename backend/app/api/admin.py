@@ -15,6 +15,8 @@ from app.schemas.auth import UserOut, ManagedUserCreate, ManagedUserUpdate
 from app.schemas.project import ProjectCreate, ProjectSummaryOut
 from app.services import project_service
 from app.services.permissions import PERMISSIONS
+from app.schemas.rewrite_policy import Scope, RewritePolicyInput
+from app.services import rewrite_policy
 
 router=APIRouter(prefix='/admin',tags=['administration'],dependencies=[Depends(get_admin)])
 
@@ -30,6 +32,16 @@ def commit(db):
 
 @router.get('/permissions')
 def permissions():return PERMISSIONS
+
+
+@router.get('/rewrite-limits/{scope}/{target_id}')
+def rewrite_limits(scope:Scope,target_id:int,db:Session=Depends(get_db)):
+    return rewrite_policy.read(db,scope,target_id)
+
+
+@router.put('/rewrite-limits/{scope}/{target_id}')
+def save_rewrite_limits(scope:Scope,target_id:int,payload:RewritePolicyInput,db:Session=Depends(get_db),admin:User=Depends(get_admin)):
+    return rewrite_policy.save(db,scope,target_id,payload,admin.id)
 
 @router.get('/users')
 def users(db:Session=Depends(get_db)):

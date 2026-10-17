@@ -93,3 +93,4 @@ from app.models.paper_review import PaperReview
 from app.models.research_desk import ResearchPassage, ResearchEvidence, ResearchBrief, ResearchJob, ResearchDraft, ResearchReferenceCheck, ResearchSourceReference
 
 from app.models.ai_configuration import AIConfiguration
+from app.models.rewrite_policy import RewritePolicy
