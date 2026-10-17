@@ -4,6 +4,7 @@ import {useI18n} from '../i18n/I18nContext';
 import {paperReviewApi,type PaperReview,type PaperChatMessage,type PaperChatSearch,type PaperChatHistory,type SourceLocation} from '../paperReviewApi';
 import Icon from './Icon';
 import VoiceTextField from './VoiceTextField';
+import AssistantActivity, {type AssistantCompletion} from './AssistantActivity';
 import {findChatSessions} from '../lib/chatSessions';
 import './paperChat.css';
 
@@ -16,6 +17,7 @@ function ChatText({text}:{text:string}){
 
 export default function PaperChat({token,project,review,open,disabled,onOpen,onClose,onBusy,onUpdate,onSource}:Props){
  const {lang}=useI18n(),ar=lang==='ar',c=(en:string,arabic:string)=>ar?arabic:en;
+ const [activityResult,setActivityResult]=useState<AssistantCompletion>('');
  const [voiceListening,setVoiceListening]=useState(false);
  const [question,setQuestion]=useState(''),[scope,setScope]=useState(0),[searchId,setSearchId]=useState('');
  const [mode,setMode]=useState('understand'),[busy,setBusy]=useState(''),[error,setError]=useState(''),[conflict,setConflict]=useState(false);
@@ -34,6 +36,7 @@ export default function PaperChat({token,project,review,open,disabled,onOpen,onC
  const questionNumbers=new Map(chat.messages.filter(m=>m.role==='user').map((m,i)=>[m.id,i+1]));
  const dateLabel=(stamp:string|null)=>stamp?new Date(stamp).toLocaleString(ar?'ar-OM':'en-GB',{dateStyle:'medium',timeStyle:'short'}):c('Earlier conversation','محادثة سابقة');
  function changeSession(id:string,history=paperHistory){
+  setActivityResult('');
   drafts.current.set(effectiveSessionId,{question,scope,searchId});
   const draft=drafts.current.get(id),lastQuestion=history.messages.filter(m=>m.session_id===id&&m.role==='user').at(-1);
   setSessionId(id);setQuestion(draft?.question??'');setScope(draft?.scope??lastQuestion?.section_id??0);setSearchId(draft?.searchId??lastQuestion?.search_id??'');
@@ -48,15 +51,18 @@ export default function PaperChat({token,project,review,open,disabled,onOpen,onC
   compare:[c('Propose keywords for finding similar papers. Ask for my permission before searching.','اقترح كلمات للبحث عن دراسات مشابهة، واطلب موافقتي قبل البحث.'),c('Which aspects should I compare with related studies?','ما الجوانب التي ينبغي مقارنتها بالدراسات المشابهة؟'),c('Suggest a plan to strengthen the literature review.','اقترح خطة لتعزيز مناقشة الدراسات السابقة.')],
  };
  useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
+ useEffect(()=>{if(!activityResult)return;const timer=setTimeout(()=>setActivityResult(''),5000);return()=>clearTimeout(timer);},[activityResult]);
+ useEffect(()=>{if(!open)setActivityResult('');},[open]);
  useEffect(()=>{if(open){heading.current?.scrollIntoView({block:'start',behavior:'smooth'});heading.current?.focus({preventScroll:true});}},[open]);
  useEffect(()=>{if(!open)return;const last=thread.current?.querySelector<HTMLElement>('.chat-message:last-of-type');if(last)thread.current?.scrollTo({top:last.offsetTop-22,behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});},[chat.messages.length,effectiveSessionId,open]);
  function choose(text:string){setQuestion(text);composer.current?.focus();composer.current?.scrollIntoView({block:'nearest',behavior:'smooth'});}
  async function perform(path:string,data:Record<string,unknown>,kind:string){
-  if(disabled||busy)return;setBusy(kind);onBusy(true);setError('');setConflict(false);
+  if(disabled||busy)return;setActivityResult('');setBusy(kind);onBusy(true);setError('');setConflict(false);
   try{
    const next=kind==='rename'?await paperReviewApi.renameChatSession(token,project,review,effectiveSessionId,String(data.title??'')):await paperReviewApi.action(token,project,review,path,{...data,language:lang,...(['message','search'].includes(kind)?{session_id:effectiveSessionId||null}:{})});
    if(!mounted.current)return;
    onUpdate(next);
+   if(kind==='message'||kind==='search')setActivityResult(kind);
    if(kind==='message'){setQuestion('');drafts.current.delete(effectiveSessionId);setSessionId(next.paper_chat?.last_session_id??effectiveSessionId);}
    else if(kind==='session'){const id=next.paper_chat?.last_session_id;if(id&&next.paper_chat)changeSession(id,next.paper_chat);}
    else if(kind==='rename')setRenaming(false);
@@ -71,7 +77,7 @@ export default function PaperChat({token,project,review,open,disabled,onOpen,onC
   }}finally{if(mounted.current){setBusy('');onBusy(false);}}
  }
  async function reload(){
-  if(busy)return;setBusy('reload');onBusy(true);
+  if(busy)return;setActivityResult('');setBusy('reload');onBusy(true);
   try{const next=await paperReviewApi.get(token,project,review.id);if(mounted.current){onUpdate(next);setError('');setConflict(false);if(searchId&&!next.paper_chat?.searches.some(s=>s.id===searchId&&s.session_id===effectiveSessionId))setSearchId('');}}
   catch{if(mounted.current)setError(c('Could not reload the saved conversation. Your unsent question is still here.','تعذر تحميل المحادثة المحفوظة. سؤالك غير المرسل ما زال هنا.'));}
   finally{if(mounted.current){setBusy('');onBusy(false);}}
@@ -103,7 +109,7 @@ export default function PaperChat({token,project,review,open,disabled,onOpen,onC
   <div className="paper-chat-body"><aside className="chat-guide"><span className="eyebrow">{c('A PLACE TO THINK','مساحة للتفكير')}</span><h3>{c('Where shall we begin?','من أين نبدأ؟')}</h3><p>{c('A question, a doubt, or an idea. Take your paper one thoughtful step further.','بسؤال، أو فكرة، أو نقطة تحتاج إلى توضيح. تقدّم بورقتك خطوة مدروسة.')} </p><div className="chat-modes">{[['understand',c('Understand my paper','افهم ورقتي'),'book'],['critique',c('Constructive critique','نقد بنّاء'),'spark'],['defence',c('Prepare for my defence','استعد للمناقشة'),'shield'],['compare',c('Find connections','اكتشف دراسات مشابهة'),'search']].map(([value,label,icon])=><button key={value} className={mode===value?'active':''} aria-pressed={mode===value} onClick={()=>setMode(value)}><Icon name={icon as 'book'|'spark'|'shield'|'search'} size={18}/>{label}</button>)}</div><div className="chat-starters">{prompts[mode].map((text,i)=><button key={i} disabled={disabled||!!busy} onClick={()=>choose(text)} dir="auto">{text}<Icon name="arrow" size={15}/></button>)}</div><div className="chat-trust"><Icon name="shield" size={20}/><strong>{c('You lead the research','أنت صاحب القرار')}</strong><p>{c('Internet search needs your approval for each query. The assistant offers guidance; your original paper stays unchanged.','البحث في الإنترنت يحتاج إلى موافقتك على كل استعلام. المساعد يقترح ويوجّه، وتبقى ورقتك الأصلية محفوظة.')}</p></div></aside>
   <div className="chat-conversation"><div className="chat-conversation-bar"><span><i aria-hidden="true"/>{c('Connected to this paper','مرتبط بهذه الورقة')}</span><span>{c('Saved conversation','محادثة محفوظة')}</span></div><div ref={thread} className="chat-thread" role="log" aria-busy={!!busy} aria-label={c('Paper discussion','مناقشة الورقة')} aria-live="polite" aria-relevant="additions text">{!chat.messages.length&&<div className="chat-empty"><div className="chat-empty-emblem"><Icon name="book" size={34}/></div><span className="eyebrow">{c('A THOUGHTFUL SECOND PERSPECTIVE','وجهة نظر تساعدك على التفكير')}</span><h3>{c('Let’s explore your paper.','لنستكشف ورقتك معًا.')}</h3><p>{c('Ask me to explain an argument, challenge a method, suggest an improvement, or practise a defence question.','اطلب شرح فكرة، أو نقد المنهج، أو اقتراح تحسين، أو التدرب على سؤال في المناقشة.')}</p><div className="chat-empty-labels"><span>{c('Source-aware answers','إجابات مرتبطة بالنص')}</span><span>{c('Search by permission','بحث بإذنك')}</span><span>{c('Constructive feedback','ملاحظات بنّاءة')}</span></div></div>}{chat.messages.map(message=><article className={`chat-message ${message.role}`} key={message.id}><div className="chat-message-author">{message.role==='assistant'?<Icon name="spark" size={16}/>:<span className="chat-you-dot"/>}<strong>{message.role==='assistant'?c('Research companion · AI','المرافق البحثي · ذكاء اصطناعي'):`${c('You','أنت')} · ${c('Question','سؤال')} ${questionNumbers.get(message.id)}`}</strong><time dateTime={message.created_at} title={dateLabel(message.created_at)}>{dateLabel(message.created_at)}</time></div>{messageContent(message)}</article>)}</div>
   {error&&<div className="chat-error" role="alert">{error}{conflict&&<button className="btn" disabled={!!busy} onClick={()=>void reload()}>{c("Reload saved conversation","تحميل المحادثة المحفوظة")}</button>}</div>}
-  {busy&&<div className="chat-thinking chat-thinking-visible" role="status" aria-live="polite" aria-atomic="true"><span className="chat-thinking-spinner" aria-hidden="true"/><div><strong>{busyLabel}</strong><small>{c('This may take a little time. You can keep reading the conversation.','قد يستغرق ذلك بعض الوقت. يمكنك متابعة قراءة المحادثة.')}</small></div></div>}
+  <AssistantActivity busy={busy} label={busyLabel} completion={activityResult}/>
   <form className="chat-composer" onSubmit={event=>{event.preventDefault();submit();}}><div className="chat-context-controls"><label>{c('Discuss','ناقش')}<select value={scope} disabled={disabled||!!busy} onChange={e=>setScope(Number(e.target.value))}><option value={0}>{c('The whole paper','الورقة كاملة')}</option>{review.sections.map(section=><option key={section.id} value={section.id}>{section.title}</option>)}</select></label>{!!chat.searches.length&&<label>{c('Academic context','سياق خارجي')}<select value={searchId} disabled={disabled||!!busy} onChange={e=>setSearchId(e.target.value)}><option value="">{c('My paper only','ورقتي فقط')}</option>{chat.searches.map((s,i)=><option value={s.id} key={s.id}>{i+1}. {s.query}</option>)}</select></label>}</div>{selectedSearch&&<p className="chat-note">{c('Using previously approved search results; sending this message will not run a new internet search.','تُستخدم نتائج البحث التي وافقت عليها سابقًا؛ إرسال الرسالة لن يبدأ بحثًا جديدًا في الإنترنت.')}</p>}<label className="chat-composer-label" htmlFor={`paper-chat-question-${review.id}`}>{c('Your question about this paper','سؤالك حول هذه الورقة')}</label><div className="chat-input-wrap"><VoiceTextField key={effectiveSessionId} id={`paper-chat-question-${review.id}`} inputRef={composer} language={lang} compact onListeningChange={setVoiceListening} dir="auto" value={question} maxLength={6000} rows={3} disabled={disabled||!!busy} placeholder={c('What would you like to understand, question, or improve?','ما الذي تريد فهمه أو مناقشته أو تحسينه؟')} onChange={setQuestion} onKeyDown={e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){e.preventDefault();submit();}}}/><button className="btn btn-primary" disabled={disabled||!!busy||voiceListening||!question.trim()} type="submit"><span className={busy?"chat-thinking-spinner chat-send-spinner":"chat-send-arrow"} aria-hidden="true">{!busy&&<Icon name="arrow" size={20}/>}</span><span>{busy?c("Working…","جارٍ الإعداد…"):c("Send","إرسال")}</span></button></div><p className="chat-voice-hint">{c('Use the microphone to dictate, stop, then review and edit the text before sending. Your browser may use an online speech service.','اضغط الميكروفون للإملاء، ثم أوقفه وراجع النص وعدّله قبل الإرسال. قد يستخدم متصفحك خدمة عبر الإنترنت لتحويل الصوت إلى نص.')}</p><div className="chat-composer-footer"><span>{c('Ctrl / ⌘ + Enter to send','Ctrl / ⌘ + Enter للإرسال')}</span><span>{question.length}/6000</span></div><p className="chat-disclaimer">{c('AI guidance can be mistaken. Check source passages and references before adopting suggestions.','قد يخطئ الذكاء الاصطناعي. راجع المقتطفات والمراجع قبل اعتماد المقترحات.')}</p></form></div></div>
  </section>;
 }

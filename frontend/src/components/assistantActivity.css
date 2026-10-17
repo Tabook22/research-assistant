@@ -1,0 +1,25 @@
+.assistant-activity { min-height:80px; }
+.assistant-activity-copy { min-width:0; }
+.assistant-robot { position:relative; display:block; flex:0 0 80px; width:80px; height:52px; color:#387864; direction:ltr; }
+.robot-floor { position:absolute; width:64px; height:1px; background:#c6ddce; bottom:2px; left:8px; }
+.robot-pacer { display:block; position:absolute; width:48px; height:48px; left:16px; top:0; }
+.robot-figure { display:block; width:48px; height:48px; overflow:visible; }
+.robot-shell,.robot-hand { fill:#e2efdf; stroke:currentColor; stroke-width:1.8; stroke-linejoin:round; }
+.robot-visor { fill:#346c5b; }.robot-eyes { fill:#f4fae9; }.robot-antenna { fill:#8eb694; }.robot-smile { stroke:#e1f2d5; }
+.robot-arm-left { transform-origin:20px 38px; }.robot-arm-right { transform-origin:44px 38px; }.robot-leg-left { transform-origin:27px 51px; }.robot-leg-right { transform-origin:37px 51px; }
+.is-thinking .robot-pacer { animation:robot-pace 4.8s ease-in-out infinite; }
+.is-thinking .robot-body { animation:robot-bob .6s ease-in-out infinite; }
+.is-thinking .robot-leg-left,.is-thinking .robot-arm-right { animation:robot-step .6s ease-in-out infinite alternate; }
+.is-thinking .robot-leg-right,.is-thinking .robot-arm-left { animation:robot-step .6s ease-in-out infinite alternate-reverse; }
+.is-thinking .robot-eyes { animation:robot-look 4.8s ease-in-out infinite; }
+.is-ready .robot-arm-right { transform:rotate(-120deg); animation:robot-greet .8s ease-in-out 1; }
+.robot-ready-badge { position:absolute; right:6px; bottom:0; width:19px; height:19px; border-radius:50%; background:#387864; color:#f4faee; border:2px solid #eff7ef; display:grid; place-items:center; animation:robot-badge .25s ease-out; }
+.robot-ready-badge svg { width:13px; height:13px; }.activity-ready { border-color:#bfdcc7; }
+@keyframes robot-pace { 0%,100% { transform:translateX(-14px); } 42%,50% { transform:translateX(14px); } 92% { transform:translateX(-14px); } }
+@keyframes robot-bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-1.5px); } }
+@keyframes robot-step { from { transform:rotate(-13deg); } to { transform:rotate(13deg); } }
+@keyframes robot-look { 0%,40% { transform:translateX(1.1px); } 50%,92% { transform:translateX(-1.1px); } 100% { transform:translateX(1.1px); } }
+@keyframes robot-greet { 0% { transform:rotate(0); } 50% { transform:rotate(-132deg); } 75% { transform:rotate(-110deg); } 100% { transform:rotate(-120deg); } }
+@keyframes robot-badge { from { transform:scale(.6); opacity:0; } to { transform:scale(1); opacity:1; } }
+@media(max-width:760px) { .assistant-robot { flex-basis:68px; width:68px; }.robot-pacer { left:10px; }.robot-floor { left:2px; }.robot-ready-badge { right:0; }.assistant-activity { gap:8px; } }
+@media(prefers-reduced-motion:reduce) { .assistant-robot * { animation:none!important; }.is-thinking .robot-pacer { transform:none; }.is-ready .robot-arm-right { transform:rotate(-120deg); } }
