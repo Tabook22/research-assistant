@@ -1,3 +1,4 @@
+import {aiProviderFailure} from '../lib/aiProviderFailure';
 import {useEffect,useRef,useState} from 'react';
 import {paperReviewApi as api,type PaperReview,type ScientificCriterion,type ScientificCatalog,type SourceLocation,type CriterionStatus} from '../paperReviewApi';
 import {useI18n} from '../i18n/I18nContext';
@@ -21,7 +22,7 @@ export default function ScientificAssessment({readOnly=false,token,project,revie
   if(text.includes('changed')||text.includes('ASSESSMENT_STALE'))return c('The paper changed. Reload the saved review, then start a new assessment.','تغير نص الورقة. أعد تحميل المراجعة المحفوظة ثم ابدأ تقييماً جديداً.');
   if(text.includes('not configured'))return c('AI assessment is not configured. The criteria guide is still available below.','خدمة التقييم غير مهيأة. يمكنك الاطلاع على دليل المعايير أدناه.');
   if(text.includes('AI_ACCESS')||text.includes('AI_CONFIGURATION'))return c('The provider rejected the request. Ask the administrator to check AI access and model settings.','رفضت الخدمة الطلب. اطلب من المسؤول التحقق من صلاحيات الذكاء الاصطناعي وإعدادات النموذج.');
-  if(text.includes('AI_RATE_LIMIT'))return c('The AI provider is busy or out of quota. Wait and check the quota, then continue.','خدمة الذكاء الاصطناعي مشغولة أو استُنفد رصيدها. انتظر وتحقق من الرصيد ثم تابع التقييم.');
+  const providerFailure=aiProviderFailure(text,c);if(providerFailure)return providerFailure;
   return c('This assessment step could not finish. Completed criteria are saved. Continue assessment to retry.','تعذر إكمال هذه الخطوة. المعايير المفحوصة محفوظة؛ اضغط متابعة التقييم لإعادة المحاولة.');
  }
  async function run(){if(disabled||!catalog)return;setRunning(true);setPaused(false);setError('');stop.current=false;onBusy(true);let current=review;

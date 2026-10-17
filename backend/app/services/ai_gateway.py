@@ -1,14 +1,29 @@
 """Task routing with native OpenAI Responses / Claude Messages and compatible chat APIs."""
 import json
+import logging
 from types import SimpleNamespace
 import httpx
 from fastapi import HTTPException
 from app.services.ai_configuration import PROVIDERS, load
 
 
-def provider_error(status):
+logger = logging.getLogger(__name__)
+
+
+def provider_error(status, data=None):
     if status == 429:
-        return HTTPException(429, 'AI_RATE_LIMIT: Provider quota or rate limit reached. Retry later.')
+        error = data.get('error', {}) if isinstance(data, dict) else {}
+        error = error if isinstance(error, dict) else {}
+        code, kind = error.get('code'), error.get('type')
+        if code == 'credit_balance_exhausted':
+            return HTTPException(429, 'AI_CREDIT_BALANCE: Provider API credits are exhausted. Administrator must add credits to the API billing account before retrying.')
+        if code in ('organization_spend_limit_exceeded', 'project_spend_limit_exceeded'):
+            return HTTPException(429, 'AI_SPEND_LIMIT: Provider spending ceiling reached. Administrator must check organization or project spending limits.')
+        if code == 'organization_usage_limit_exceeded':
+            return HTTPException(429, 'AI_USAGE_LIMIT: Provider approved usage ceiling reached. Administrator must request a higher usage limit.')
+        if code == 'insufficient_quota' or kind == 'insufficient_quota':
+            return HTTPException(429, 'AI_QUOTA: Provider API quota is exhausted. Administrator must check API billing and usage limits before retrying.')
+        return HTTPException(429, 'AI_RATE_LIMIT: Provider request or token rate limit reached. Wait before retrying; shorten the request if it persists.')
     if status in (401, 403):
         return HTTPException(503, 'AI_ACCESS: Provider rejected the API key or model access.')
     if status in (400, 404, 422):
@@ -24,7 +39,17 @@ async def exchange(profile, method, path, *, body=None, params=None):
         async with httpx.AsyncClient(timeout=120, follow_redirects=False) as client:
             response = await client.request(method, profile.base_url + path, headers=headers, json=body, params=params)
         if not 200 <= response.status_code < 300:
-            raise provider_error(response.status_code)
+            try:
+                data = response.json()
+            except ValueError:
+                data = None
+            error = provider_error(response.status_code, data)
+            # Log our own category only: upstream messages may echo keys or research text.
+            logger.warning('AI provider rejected request: status=%s category=%s', response.status_code, error.detail.split(':', 1)[0])
+            retry_after = response.headers.get('retry-after', '')
+            if error.detail.startswith('AI_RATE_LIMIT:') and retry_after.isascii() and retry_after.isdigit() and len(retry_after) <= 6:
+                error.headers = {'Retry-After': retry_after}
+            raise error
         return response.json()
     except httpx.TimeoutException:
         raise HTTPException(504, 'AI_TIMEOUT: Provider request timed out. Saved progress is preserved.') from None

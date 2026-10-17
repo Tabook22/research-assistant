@@ -1,3 +1,4 @@
+import {aiProviderFailure} from '../lib/aiProviderFailure';
 import {useEffect,useRef,useState} from 'react';
 import {ApiError} from '../api';
 import {useI18n} from '../i18n/I18nContext';
@@ -70,10 +71,10 @@ export default function PaperChat({token,project,review,open,disabled,onOpen,onC
   }catch(e){if(mounted.current){
    const text=e instanceof Error?e.message:'';setConflict(e instanceof ApiError&&e.status===409);
    setError(e instanceof ApiError&&e.status===409?c('This paper changed in another tab. Reload the saved review, then retry. Your question remains here.','تغيّرت الورقة في نافذة أخرى. أعد تحميل المراجعة المحفوظة ثم أعد المحاولة. سؤالك ما زال هنا.'):
-    text.includes('AI_RATE_LIMIT')?c('The AI provider is busy or its quota is exhausted. Wait, check the provider balance, then retry.','خدمة الذكاء الاصطناعي مشغولة أو استُنفدت حصتها. انتظر وتحقق من رصيد الخدمة ثم أعد المحاولة.'):
+    aiProviderFailure(text,c)??(
     text.includes('not configured')?c('Ask the administrator to configure the discussion provider, model and API key in AI settings.','اطلب من المسؤول تهيئة مزوّد وموديل ومفتاح خدمة المناقشة في إعدادات الذكاء الاصطناعي.'):
     text.includes('SEARCH_UNAVAILABLE')?c('Academic search is temporarily unavailable. Your permission was not reused; retry with the same query when ready.','البحث الأكاديمي غير متاح حاليًا. يمكنك الموافقة مجددًا على الاستعلام نفسه عند إعادة المحاولة.'):
-    c('The assistant could not complete this step. Saved messages are preserved. Check AI settings or your connection, then retry.','تعذر إكمال هذه الخطوة. الرسائل المحفوظة باقية. تحقق من إعدادات الذكاء الاصطناعي أو الاتصال ثم أعد المحاولة.'));
+    c('The assistant could not complete this step. Saved messages are preserved. Check AI settings or your connection, then retry.','تعذر إكمال هذه الخطوة. الرسائل المحفوظة باقية. تحقق من إعدادات الذكاء الاصطناعي أو الاتصال ثم أعد المحاولة.')));
   }}finally{if(mounted.current){setBusy('');onBusy(false);}}
  }
  async function reload(){

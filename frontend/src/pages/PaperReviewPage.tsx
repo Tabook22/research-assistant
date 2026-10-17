@@ -1,3 +1,4 @@
+import {aiProviderFailure} from '../lib/aiProviderFailure';
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api";
@@ -22,11 +23,11 @@ export default function PaperReviewPage() {
  const ar=lang==="ar"; const c=(en:string,arabic:string)=>ar?arabic:en;
  const message=(e:unknown)=>{
   const text=e instanceof Error?e.message:String(e);
+  const providerFailure=aiProviderFailure(text,c);if(providerFailure)return providerFailure;
   const errors:[string,string,string][]=[
    ["not configured","AI assistance is not configured. You can still read your paper and edit drafts.","مساعدة الذكاء الاصطناعي غير مهيأة. يمكنك قراءة الورقة وتعديل المسودات."],
    ["AI_TIMEOUT","The AI provider took too long. Continue analysis to retry the unfinished part.","استغرقت خدمة الذكاء الاصطناعي وقتاً أطول من المتاح. اضغط متابعة التحليل لإعادة محاولة الجزء غير المكتمل."],
    ["AI_CONNECTION","Cannot connect to the AI provider. Check your connection and retry.","تعذر الاتصال بخدمة الذكاء الاصطناعي. تحقق من الاتصال ثم أعد المحاولة."],
-   ["AI_RATE_LIMIT","The AI provider is busy or its quota is exhausted. Wait and check your provider quota before retrying.","خدمة الذكاء الاصطناعي مشغولة أو تم استنفاد حصتها. انتظر وتحقق من رصيد الخدمة قبل إعادة المحاولة."],
    ["AI_ACCESS","The AI provider rejected access. Check the API key and model permissions in the server configuration.","رفضت خدمة الذكاء الاصطناعي الوصول. تحقق من مفتاح الخدمة وصلاحيات النموذج في إعدادات الخادم."],
    ["AI_CONFIGURATION","The AI provider rejected the request. Check the configured model and API compatibility.","رفضت خدمة الذكاء الاصطناعي الطلب. تحقق من النموذج المهيأ وتوافق واجهة الخدمة."],
    ["AI_RESPONSE","The AI response was incomplete. Continue analysis to retry the unfinished part.","لم تكتمل استجابة الذكاء الاصطناعي. اضغط متابعة التحليل لإعادة محاولة الجزء غير المكتمل."],

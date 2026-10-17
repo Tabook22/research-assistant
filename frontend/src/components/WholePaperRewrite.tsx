@@ -1,3 +1,4 @@
+import {aiProviderFailure} from '../lib/aiProviderFailure';
 import {useEffect,useRef,useState} from 'react';
 import {paperReviewApi as api,type PaperReview,type ScientificCatalog} from '../paperReviewApi';
 import {useI18n} from '../i18n/I18nContext';
@@ -24,7 +25,7 @@ export default function WholePaperRewrite({token,project,review,disabled,onUpdat
   if(text.includes('REWRITE_STALE')||text.includes('changed'))return c('The source or review changed. Reload, then prepare a new proposal.','تغيّر النص أو المراجعة. أعد التحميل ثم أنشئ مقترحاً جديداً.');
   if(text.includes('not configured'))return c('Ask the administrator to configure the analysis AI profile.','اطلب من المسؤول تهيئة إعداد الذكاء الاصطناعي للتحليل.');
   if(text.includes('AI_ACCESS')||text.includes('AI_CONFIGURATION'))return c('Check the analysis provider, model access and output budget in Administration. Completed sections are saved.','تحقق من مزوّد التحليل وصلاحيات الموديل وحد الإجابة في الإدارة. الأجزاء المكتملة محفوظة.');
-  if(text.includes('AI_RATE_LIMIT'))return c('The provider’s balance or request rate limit was reached. This is separate from application character ceilings. Ask the administrator to check billing or retry later. Completed sections are saved.','بلغت حد طلبات المزوّد أو رصيده. هذا منفصل عن سقف أحرف التطبيق. اطلب من الأدمن التحقق من الفوترة أو أعد المحاولة لاحقًا. الأجزاء المكتملة محفوظة.');
+  const providerFailure=aiProviderFailure(text,c);if(providerFailure)return providerFailure;
   return c('This step could not finish. Previously saved sections are preserved; continue to retry.','تعذر إكمال هذه الخطوة. الأجزاء المحفوظة باقية؛ اضغط المتابعة لإعادة المحاولة.');
  }
  async function run(){stop.current=false;setPaused(false);setRunning(true);onBusy(true);setError('');let current=review;
