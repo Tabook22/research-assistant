@@ -56,3 +56,9 @@ class ChatSessionCreate(AnalyzeRequest):
 
 class ChatSessionRename(AnalyzeRequest):
     title: str = Field(min_length=1, max_length=120)
+
+class AudienceQuestionStart(AnalyzeRequest):
+    count: int = Field(default=5, ge=1, le=10, strict=True)
+    format: Literal['essay', 'multiple_choice', 'fill_blank', 'mixed'] = 'essay'
+    section_id: int | None = Field(default=None, ge=1)
+    language: Literal['en', 'ar'] | None = None

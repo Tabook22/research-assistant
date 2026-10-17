@@ -13,6 +13,8 @@ export interface ReviewSection {
 }
 export interface PassageNote {id:string;category:'strength'|'improvement'|'verification';severity:'low'|'medium'|'high';title:string;explanation:string;location:SourceLocation|null;replacement:string}
 export interface PaperReview {
+ audience_questions?: AudienceQuestionSet;
+ previous_audience_questions?: AudienceQuestionSet;
  rewrite_limits?: RewriteLimits;
  id: number; project_id: number; filename: string; language: string; version: number;
  sections: ReviewSection[]; overview: ReviewFinding | null;
@@ -29,6 +31,9 @@ export interface PaperReview {
  origin_review_id?: number;
  paper_chat?: PaperChatHistory;
 }
+export type AudienceFormat='essay'|'multiple_choice'|'fill_blank'|'mixed';
+export interface AudienceQuestion {id:number;format:Exclude<AudienceFormat,'mixed'>;topic:string;question:string;why_asked:string;answer:string;options:string[];correct_index:number|null;location:SourceLocation}
+export interface AudienceQuestionSet {count:number;format:AudienceFormat;section_id:number|null;language:string;created_at:string;updated_at:string;complete:boolean;stale:boolean;coverage:{mode:string;supplied_characters:number;total_characters:number};questions:AudienceQuestion[]}
 export interface PaperChatSession {id:string;number:number;title:string;created_at:string|null;updated_at:string|null;question_count:number;message_count:number;search_count:number;preview:string}
 export interface RewriteLimits {scope:'global'|'project'|'review';target_id:number;mode:'inherit'|'custom'|'unlimited';source_limit:number|null;output_limit:number|null;discussion_limit:number|null}
 export interface PaperChatHistory {messages:PaperChatMessage[];searches:PaperChatSearch[];sessions:PaperChatSession[];last_session_id?:string}

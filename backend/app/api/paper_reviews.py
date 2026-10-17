@@ -17,11 +17,11 @@ from app.database import get_db
 from app.config import get_settings
 from app.models.user import User
 from app.models.paper_review import PaperReview
-from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate, ComplianceStart, RewriteStart, RewriteMerge, PaperChatRequest, PaperChatSearch, ChatSessionCreate, ChatSessionRename
+from app.schemas.paper_review import Action, AnalyzeRequest, DraftUpdate, ComplianceStart, RewriteStart, RewriteMerge, PaperChatRequest, PaperChatSearch, ChatSessionCreate, ChatSessionRename, AudienceQuestionStart
 from app.services import scientific_assessment as assessment
 from app.services import paper_rewrite, rewrite_policy
 from app.services import paper_annotations
-from app.services import paper_chat
+from app.services import paper_chat, audience_questions
 from app.services import scientific_rubric
 from app.services.access import get_project_for_user
 from app.services import paper_review_service as svc
@@ -46,6 +46,9 @@ def result(row):
         state['rewrite'].pop('context',None)
     if state.get('previous_rewrite'):
         state['previous_rewrite'].pop('context',None)
+    for key in ('audience_questions', 'previous_audience_questions'):
+        if state.get(key):
+            state[key]['stale'] = audience_questions.stale(state, state[key])
     state['rewrite_limits']=rewrite_policy.effective(object_session(row),row.project_id,row.id)
     return {"id":row.id,"project_id":row.project_id,"filename":row.filename,"language":row.language,"version":row.version,"updated_at":row.updated_at,**state}
 
@@ -86,6 +89,19 @@ async def search_for_paper_chat(project_id:int, review_id:int, payload:PaperChat
     if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
     state=await paper_chat.search(deepcopy(row.state),payload.proposal_id,payload.query,payload.consent,payload.language or row.language,payload.session_id)
     return save(db,row,state,payload.version)
+
+@router.post('/{review_id}/audience-questions/start')
+async def start_audience_questions(project_id:int, review_id:int, payload:AudienceQuestionStart, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
+    state=await audience_questions.start(deepcopy(row.state),payload.language or row.language,payload.count,payload.format,payload.section_id)
+    return save(db,row,state,payload.version)
+
+@router.post('/{review_id}/audience-questions/next')
+async def next_audience_questions(project_id:int, review_id:int, payload:AnalyzeRequest, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
+    row=load(db,project_id,review_id,user)
+    if row.version!=payload.version:raise HTTPException(409,'This review changed. Reload before continuing.')
+    return save(db,row,await audience_questions.advance(deepcopy(row.state)),payload.version)
 
 @router.post('/{review_id}/chat/sessions')
 def create_chat_session(project_id:int, review_id:int, payload:ChatSessionCreate, db:Session=Depends(get_db), user:User=Depends(get_current_user)):
